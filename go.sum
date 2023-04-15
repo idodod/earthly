@@ -304,6 +304,8 @@ github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovk
 github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=
 github.com/mattn/go-isatty v0.0.17 h1:BTarxUcIeDqL27Mc+vyvdWYSL28zpIhv3RoTdsLMPng=
 github.com/mattn/go-isatty v0.0.17/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=
+github.com/mikejholly/netrc v0.0.0-20210204082910-926c7f70242a h1:Dx33QnA2K+Vr32socL7CD9vjtdFw7IxkYccD7sL7tl8=
+github.com/mikejholly/netrc v0.0.0-20210204082910-926c7f70242a/go.mod h1:Zi/ZFkEqFHTm7qkjyNJjaWH4LQA9LQhGJyF0lTYGpxw=
 github.com/mikejholly/netrc v0.0.0-20221121193719-a154cb29ec2a h1:1XyP7Y19inZMSHUVJv1GSWLGag2xz/MUPzS54rQs42Y=
 github.com/mikejholly/netrc v0.0.0-20221121193719-a154cb29ec2a/go.mod h1:Zi/ZFkEqFHTm7qkjyNJjaWH4LQA9LQhGJyF0lTYGpxw=
 github.com/mitchellh/go-homedir v1.1.0 h1:lukF9ziXFxDFPkA1vsr5zpc1XuPDn/wFntq5mG+4E0Y=
