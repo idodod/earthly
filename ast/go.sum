@@ -82,6 +82,7 @@ github.com/poy/onpar v0.3.1 h1:iqwl2S3U08PY8Bm9Hfh9v3fxdig7hZy9bsZfTephng8=
 github.com/poy/onpar v0.3.1/go.mod h1:WJueGwprgKVeX1mfOJfCxEJNbyhYiY0lWw2i18UaEi0=
 github.com/poy/onpar v1.1.2 h1:QaNrNiZx0+Nar5dLgTVp5mXkyoVFIbepjyEoGSnhbAY=
 github.com/poy/onpar v1.1.2/go.mod h1:6X8FLNoxyr9kkmnlqpK6LSoiOtrO6MICtWwEuWkLjzg=
+github.com/poy/onpar/v3 v3.0.0/go.mod h1:w699dMqK3XHaDjFCMNkxM2T4lBDf4XbxEXonu5B5duU=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3/go.mod h1:/TN21ttK/J9q6uSwhBd54HahCDft0ttaMvbicHlPoso=
 github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910/go.mod h1:MbSGuTsp3dbXC40dX6PRTWyKYBIrTGTE9sqQNg2J8bo=
