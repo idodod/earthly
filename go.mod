@@ -16,7 +16,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/earthly/cloud-api v1.0.1-0.20230316192913-d68000c20ba2
-	github.com/earthly/earthly/ast v0.0.0-00010101000000-000000000000
+	github.com/earthly/earthly/ast v0.0.1
 	github.com/earthly/earthly/util/deltautil v0.0.0-00010101000000-000000000000
 	github.com/elastic/go-sysinfo v1.9.0
 	github.com/fatih/color v1.15.0
