@@ -54,6 +54,8 @@ github.com/alessio/shellescape v1.4.1 h1:V7yhSDDn8LP4lc4jS8pFkt0zCnzVJlG5JXy9BVK
 github.com/alessio/shellescape v1.4.1/go.mod h1:PZAiSCk0LJaZkiCSkPv8qIobYglO3FPpyFjDCtHLS30=
 github.com/alexcb/go-flags v0.0.0-20210722203016-f11d7ecb5ee5 h1:im0niQRZXdxO8F1rw4zwb5rJmOJ9XnNtlnMFyfLenYE=
 github.com/alexcb/go-flags v0.0.0-20210722203016-f11d7ecb5ee5/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
+github.com/alexcb/go-flags v1.5.0 h1:SpeenpMFY+eytNqzVOak2FrbY8IX3SXE2E50sKER9KE=
+github.com/alexcb/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230219212500-1f9a474cc2dc h1:ikxgKfnYm4kXCOohe1uCkVFwZcABDZbVsqginko+GY8=
 github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230219212500-1f9a474cc2dc/go.mod h1:pSwJ0fSY5KhvocuWSx4fz3BA8OrA1bQn+K1Eli3BRwM=

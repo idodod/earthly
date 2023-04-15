@@ -133,7 +133,7 @@ replace (
 	github.com/earthly/earthly/ast => ./ast
 	github.com/earthly/earthly/util/deltautil => ./util/deltautil
 	github.com/jdxcode/netrc => github.com/mikejholly/netrc v0.0.0-20221121193719-a154cb29ec2a
-	github.com/jessevdk/go-flags => github.com/alexcb/go-flags v0.0.0-20210722203016-f11d7ecb5ee5
+	github.com/jessevdk/go-flags => github.com/alexcb/go-flags v1.5.0
 
 	github.com/moby/buildkit => github.com/earthly/buildkit v0.0.1-0.20230410194618-1701faffba4d
 	github.com/tonistiigi/fsutil => github.com/earthly/fsutil v0.0.0-20230322211606-d14130b24a8e
