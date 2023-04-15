@@ -24,7 +24,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/jdxcode/netrc v0.0.0-20210204082910-926c7f70242a
+	github.com/jdxcode/netrc v0.0.0-20221124155335-4616370d1a84
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-colorable v0.1.13
