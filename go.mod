@@ -12,13 +12,13 @@ require (
 	github.com/containerd/containerd v1.7.0
 	github.com/creack/pty v1.1.18
 	github.com/docker/cli v23.0.1+incompatible
-	github.com/docker/distribution v2.8.1+incompatible
+	github.com/docker/distribution v2.8.2+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/earthly/cloud-api v1.0.1-0.20230316192913-d68000c20ba2
 	github.com/earthly/earthly/ast v0.0.0-00010101000000-000000000000
 	github.com/earthly/earthly/util/deltautil v0.0.0-00010101000000-000000000000
-	github.com/elastic/go-sysinfo v1.9.0
+	github.com/elastic/go-sysinfo v1.11.1
 	github.com/fatih/color v1.15.0
 	github.com/gofrs/flock v0.8.1
 	github.com/google/uuid v1.3.0
@@ -78,7 +78,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/docker v23.0.1+incompatible // indirect
+	github.com/docker/docker v23.0.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/elastic/go-windows v1.0.0 // indirect
@@ -120,7 +120,7 @@ require (
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
-	golang.org/x/time v0.1.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
