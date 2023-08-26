@@ -39,7 +39,7 @@ require (
 	github.com/poy/onpar v0.3.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.2
-	github.com/tonistiigi/fsutil v0.0.0-20230105215944-fb433841cbfa
+	github.com/tonistiigi/fsutil v0.0.0-20230825212630-f09800878302
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.6.0
 	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2
