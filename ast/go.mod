@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	git.sr.ht/~nelsam/hel v0.4.4
-	github.com/antlr/antlr4/runtime/Go/antlr/v4 v4.0.0-20230219212500-1f9a474cc2dc
+	github.com/antlr/antlr4/runtime/Go/antlr/v4 0eb38a02d7aa
 	github.com/pkg/errors v0.9.1
 	github.com/poy/onpar v0.3.1
 )
