@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	git.sr.ht/~nelsam/hel v0.4.4
+	git.sr.ht/~nelsam/hel/v4 v4.1.2
 	github.com/adrg/xdg v0.4.0
 	github.com/alessio/shellescape v1.4.1
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
@@ -36,7 +37,7 @@ require (
 	github.com/otiai10/copy v1.9.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/errors v0.9.1
-	github.com/poy/onpar v0.3.1
+	github.com/poy/onpar v1.1.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.2
 	github.com/tonistiigi/fsutil v0.0.0-20230105215944-fb433841cbfa
