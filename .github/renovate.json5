@@ -23,9 +23,9 @@
         '.+\.md',
       ],
       matchStrings: [
-        'earthly/releases/download/(?<currentValue>v\\d+\\.\\d+\\.\\d+)/',
-        '- uses: earthly/actions/setup-earthly@.*?[\\s\\n]+.*?[\\s\\n]+with:[\\s\\n]*version: (?<currentValue>v\\d+\\.\\d+\\.\\d+)[\\s\\n/]+',
-        '\'earthly/earthly:(?<currentValue>v\\d+\\.\\d+\\.\\d+)\'',
+        'earthly/releases/download/(?<currentValue>.+?)/',
+        '- uses: earthly/actions/setup-earthly@.*?[\\s\\n]+.*?[\\s\\n]+with:[\\s\\n]*version: (?<currentValue>.+?)[\\s\\n/]+',
+        '\'earthly/earthly:(?<currentValue>.+?)\'',
 //        'github.com/earthly/earthly:(?<currentValue>.+?)\\+',
   //      'earthly/earthly:(?<currentValue>.+?)[\\s\\n/]+',
       ],
