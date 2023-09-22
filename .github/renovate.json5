@@ -24,6 +24,7 @@
       ],
       matchStrings: [
         'earthly/releases/download/(?<currentValue>.+?)/',
+        '- uses: earthly/actions/setup-earthly@.*?[\\s\\n]+.*?[\\s\\n]+with:[\\s\\n]*version: (?<currentValue>.*?)[\\s\\n/]+',
       ],
       depNameTemplate: 'earthly/earthly',
       datasourceTemplate: 'github-releases',
