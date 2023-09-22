@@ -24,7 +24,6 @@ import (
 	"github.com/earthly/earthly/util/gatewaycrafter"
 	"github.com/earthly/earthly/util/gwclientlogger"
 	"github.com/earthly/earthly/util/llbutil"
-	"github.com/earthly/earthly/util/llbutil/authprovider/cloudauth"
 	"github.com/earthly/earthly/util/llbutil/pllb"
 	"github.com/earthly/earthly/util/llbutil/secretprovider"
 	"github.com/earthly/earthly/util/platutil"
@@ -84,6 +83,12 @@ type Opt struct {
 	InteractiveDebugging                  bool
 	InteractiveDebuggingDebugLevelLogging bool
 	GitImage                              string
+	GitLFSInclude                         string
+	GitLogLevel                           llb.GitLogLevel
+}
+
+type ProjectAdder interface {
+	AddProject(org, project string)
 }
 
 // BuildOpt is a collection of build options.
@@ -102,9 +107,10 @@ type BuildOpt struct {
 	GlobalWaitBlockFtr         bool
 	LocalArtifactWhiteList     *gatewaycrafter.LocalArtifactWhiteList
 	Logbus                     *logbus.Bus
-	MainTargetDetailsFuture    chan earthfile2llb.TargetDetails
+	MainTargetDetailsFunc      func(earthfile2llb.TargetDetails) error
 	Runner                     string
-	CloudStoredAuthProvider    cloudauth.ProjectBasedAuthProvider
+	ProjectAdder               ProjectAdder
+	EarthlyCIRunner            bool
 }
 
 // Builder executes Earthly builds.
@@ -136,7 +142,7 @@ func NewBuilder(ctx context.Context, opt Opt) (*Builder, error) {
 		opt:      opt,
 		resolver: nil, // initialized below
 	}
-	b.resolver = buildcontext.NewResolverCustomGit(opt.CleanCollection, opt.GitLookup, opt.Console, opt.FeatureFlagOverrides, opt.GitBranchOverride, opt.GitImage)
+	b.resolver = buildcontext.NewResolver(opt.CleanCollection, opt.GitLookup, opt.Console, opt.FeatureFlagOverrides, opt.GitBranchOverride, opt.GitLFSInclude, opt.GitLogLevel, opt.GitImage)
 	return b, nil
 }
 
@@ -206,6 +212,7 @@ func (b *Builder) convertAndBuild(ctx context.Context, target domain.Target, opt
 				OnlyFinalTargetImages:                opt.OnlyFinalTargetImages,
 				DoPushes:                             opt.Push,
 				IsCI:                                 opt.CI,
+				EarthlyCIRunner:                      opt.EarthlyCIRunner,
 				ExportCoordinator:                    exportCoordinator,
 				LocalArtifactWhiteList:               opt.LocalArtifactWhiteList,
 				InternalSecretStore:                  b.opt.InternalSecretStore,
@@ -215,9 +222,9 @@ func (b *Builder) convertAndBuild(ctx context.Context, target domain.Target, opt
 				InteractiveDebuggerEnabled:           b.opt.InteractiveDebugging,
 				InteractiveDebuggerDebugLevelLogging: b.opt.InteractiveDebuggingDebugLevelLogging,
 				Logbus:                               opt.Logbus,
-				MainTargetDetailsFuture:              opt.MainTargetDetailsFuture,
+				MainTargetDetailsFunc:                opt.MainTargetDetailsFunc,
 				Runner:                               opt.Runner,
-				CloudStoredAuthProvider:              opt.CloudStoredAuthProvider,
+				ProjectAdder:                         opt.ProjectAdder,
 			}
 			mts, err = earthfile2llb.Earthfile2LLB(childCtx, target, opt, true)
 			if err != nil {

@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"time"
 
 	pb "github.com/earthly/cloud-api/compute"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
@@ -65,9 +68,15 @@ type SatelliteInstance struct {
 	MaintenanceWeekendsOnly bool
 	RevisionID              int32
 	Hidden                  bool
+	LastUsed                time.Time
+	CacheRetention          time.Duration
 }
 
-func (c *Client) ListSatellites(ctx context.Context, orgID string, includeHidden bool) ([]SatelliteInstance, error) {
+func (c *Client) ListSatellites(ctx context.Context, orgName string, includeHidden bool) ([]SatelliteInstance, error) {
+	orgID, err := c.GetOrgID(ctx, orgName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed listing satellites")
+	}
 	resp, err := c.compute.ListSatellites(c.withAuth(ctx), &pb.ListSatellitesRequest{
 		OrgId:         orgID,
 		IncludeHidden: includeHidden,
@@ -78,19 +87,25 @@ func (c *Client) ListSatellites(ctx context.Context, orgID string, includeHidden
 	instances := make([]SatelliteInstance, len(resp.Instances))
 	for i, s := range resp.Instances {
 		instances[i] = SatelliteInstance{
-			Name:     s.Name,
-			Org:      orgID,
-			Platform: s.Platform,
-			Size:     s.Size,
-			State:    satelliteStatus(s.Status),
-			Version:  s.Version,
-			Hidden:   s.Hidden,
+			Name:           s.Name,
+			Org:            orgID,
+			Platform:       s.Platform,
+			Size:           s.Size,
+			State:          satelliteStatus(s.Status),
+			Version:        s.Version,
+			Hidden:         s.Hidden,
+			LastUsed:       s.LastUsed.AsTime(),
+			CacheRetention: s.CacheRetention.AsDuration(),
 		}
 	}
 	return instances, nil
 }
 
-func (c *Client) GetSatellite(ctx context.Context, name, orgID string) (*SatelliteInstance, error) {
+func (c *Client) GetSatellite(ctx context.Context, name, orgName string) (*SatelliteInstance, error) {
+	orgID, err := c.GetOrgID(ctx, orgName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed getting satellites")
+	}
 	resp, err := c.compute.GetSatellite(c.withAuth(ctx), &pb.GetSatelliteRequest{
 		OrgId: orgID,
 		Name:  name,
@@ -112,11 +127,17 @@ func (c *Client) GetSatellite(ctx context.Context, name, orgID string) (*Satelli
 		MaintenanceWeekendsOnly: resp.MaintenanceWeekendsOnly,
 		RevisionID:              resp.RevisionId,
 		Hidden:                  resp.Hidden,
+		LastUsed:                resp.LastUsed.AsTime(),
+		CacheRetention:          resp.CacheRetention.AsDuration(),
 	}, nil
 }
 
-func (c *Client) DeleteSatellite(ctx context.Context, name, orgID string) error {
-	_, err := c.compute.DeleteSatellite(c.withAuth(ctx), &pb.DeleteSatelliteRequest{
+func (c *Client) DeleteSatellite(ctx context.Context, name, orgName string) error {
+	orgID, err := c.GetOrgID(ctx, orgName)
+	if err != nil {
+		return errors.Wrap(err, "failed deleting satellite")
+	}
+	_, err = c.compute.DeleteSatellite(c.withAuth(ctx), &pb.DeleteSatelliteRequest{
 		OrgId: orgID,
 		Name:  name,
 	})
@@ -128,7 +149,7 @@ func (c *Client) DeleteSatellite(ctx context.Context, name, orgID string) error 
 
 type LaunchSatelliteOpt struct {
 	Name                    string
-	OrgID                   string
+	OrgName                 string
 	Size                    string
 	Platform                string
 	PinnedVersion           string
@@ -138,8 +159,12 @@ type LaunchSatelliteOpt struct {
 }
 
 func (c *Client) LaunchSatellite(ctx context.Context, opt LaunchSatelliteOpt) error {
+	orgID, err := c.GetOrgID(ctx, opt.OrgName)
+	if err != nil {
+		return errors.Wrap(err, "failed launching satellite")
+	}
 	req := &pb.LaunchSatelliteRequest{
-		OrgId:                   opt.OrgID,
+		OrgId:                   orgID,
 		Name:                    opt.Name,
 		Platform:                opt.Platform,
 		Size:                    opt.Size,
@@ -148,7 +173,7 @@ func (c *Client) LaunchSatellite(ctx context.Context, opt LaunchSatelliteOpt) er
 		MaintenanceWindowStart:  opt.MaintenanceWindowStart,
 		MaintenanceWeekendsOnly: opt.MaintenanceWeekendsOnly,
 	}
-	_, err := c.compute.LaunchSatellite(c.withAuth(ctx), req)
+	_, err = c.compute.LaunchSatellite(c.withAuth(ctx), req)
 	if err != nil {
 		return errors.Wrap(err, "failed launching satellite")
 	}
@@ -160,51 +185,94 @@ type SatelliteStatusUpdate struct {
 	Err   error
 }
 
-func (c *Client) ReserveSatellite(ctx context.Context, name, orgID, gitAuthor, gitConfigEmail string, isCI bool) (out chan SatelliteStatusUpdate) {
+func (c *Client) ReserveSatellite(ctx context.Context, name, orgName, gitAuthor, gitConfigEmail string, isCI bool) (out chan SatelliteStatusUpdate) {
 	out = make(chan SatelliteStatusUpdate)
 	go func() {
-		// Some notes on the 10-minute timeout here:
-		// Usually satellites reserve in 1-15 seconds, however, in some edge cases it will take longer.
-		// It can take a minute if the satellite is actively falling asleep (it needs to finish, then wake back up).
-		// In extreme cases, if a satellite update is running, the satellite can take around 6 minutes to finish,
-		// however, those updates typically only run overnight when the user is not expected to run builds.
-		ctxTimeout, cancel := context.WithTimeout(ctx, 10*time.Minute)
-		defer cancel()
-		defer close(out)
-		stream, err := c.compute.ReserveSatellite(c.withAuth(ctxTimeout), &pb.ReserveSatelliteRequest{
-			OrgId:          orgID,
-			Name:           name,
-			CommitEmail:    gitAuthor,
-			GitConfigEmail: gitConfigEmail,
-			IsCi:           isCI,
-		})
+		orgID, err := c.GetOrgID(ctx, orgName)
 		if err != nil {
-			out <- SatelliteStatusUpdate{Err: errors.Wrap(err, "failed opening satellite reserve stream")}
+			out <- SatelliteStatusUpdate{Err: errors.Wrap(err, "failed reserving satellite")}
 			return
 		}
-		for {
-			update, err := stream.Recv()
-			if err == io.EOF {
-				return
-			}
+		// Usually satellites reserve in 1-15 seconds, however, in some edge cases it will take longer.
+		// It can take a minute if the satellite is actively falling asleep (it needs to finish, then wake back up).
+		// In extreme cases, if a satellite update is running, the satellite can take around 6 minutes to finish.
+		ctxTimeout, cancel := context.WithTimeout(ctx, 20*time.Minute)
+		defer cancel()
+		defer close(out)
+		// Note: we were having issues with the stream closing unexpectedly,
+		// so we have wrapped this in a retry loop. This may be a temporary solution.
+		const numRetries = 5
+		var retriedError error
+		for i := 1; i <= numRetries; i++ {
+			stream, err := c.compute.ReserveSatellite(c.withRetryCount(c.withAuth(ctxTimeout), i), &pb.ReserveSatelliteRequest{
+				OrgId:          orgID,
+				Name:           name,
+				CommitEmail:    gitAuthor,
+				GitConfigEmail: gitConfigEmail,
+				IsCi:           isCI,
+			})
 			if err != nil {
-				out <- SatelliteStatusUpdate{Err: errors.Wrap(err, "failed receiving satellite reserve update")}
-				return
+				_, _ = fmt.Fprintf(os.Stderr, "retrying connection [attempt %d/%d]\n", i, numRetries)
+				time.Sleep(time.Duration(i) * 2 * time.Second)
+				continue
 			}
-			status := satelliteStatus(update.Status)
-			if status == SatelliteStatusFailed {
-				out <- SatelliteStatusUpdate{Err: errors.New("satellite is in a failed state")}
-				return
+			var lastStatus string
+			for {
+				update, err := stream.Recv()
+				if err == io.EOF {
+					return
+				}
+				if err != nil {
+					if isRetryable(err) {
+						retriedError = err
+						_, _ = fmt.Fprintf(os.Stderr, "retrying connection [attempt %d/%d]\n", i, numRetries)
+						time.Sleep(time.Duration(i) * 2 * time.Second)
+						break
+					}
+					out <- SatelliteStatusUpdate{Err: errors.Wrap(err, "failed receiving satellite reserve update")}
+					return
+				}
+				lastStatus = satelliteStatus(update.Status)
+				if lastStatus == SatelliteStatusFailed {
+					out <- SatelliteStatusUpdate{Err: errors.New("satellite is in a failed state")}
+					return
+				}
+				out <- SatelliteStatusUpdate{State: satelliteStatus(update.Status)}
 			}
-			out <- SatelliteStatusUpdate{State: satelliteStatus(update.Status)}
 		}
+		// max retries consumed
+		out <- SatelliteStatusUpdate{Err: errors.Wrap(retriedError, "failed to retrieve satellite status")}
 	}()
 	return out
 }
 
-func (c *Client) WakeSatellite(ctx context.Context, name, orgID string) (out chan SatelliteStatusUpdate) {
+func isRetryable(err error) bool {
+	switch status.Code(err) {
+	case codes.DeadlineExceeded:
+		return true
+	case codes.Internal:
+		return true
+	case codes.Unavailable:
+		return true
+	case codes.ResourceExhausted:
+		return true
+	case codes.FailedPrecondition:
+		return true
+	case codes.DataLoss:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Client) WakeSatellite(ctx context.Context, name, orgName string) (out chan SatelliteStatusUpdate) {
 	out = make(chan SatelliteStatusUpdate)
 	go func() {
+		orgID, err := c.GetOrgID(ctx, orgName)
+		if err != nil {
+			out <- SatelliteStatusUpdate{Err: errors.Wrap(err, "failed waking satellite")}
+			return
+		}
 		ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer cancel()
 		defer close(out)
@@ -230,15 +298,20 @@ func (c *Client) WakeSatellite(ctx context.Context, name, orgID string) (out cha
 				out <- SatelliteStatusUpdate{Err: errors.New("satellite is in a failed state")}
 				return
 			}
-			out <- SatelliteStatusUpdate{State: satelliteStatus(update.Status)}
+			out <- SatelliteStatusUpdate{State: status}
 		}
 	}()
 	return out
 }
 
-func (c *Client) SleepSatellite(ctx context.Context, name, orgID string) (out chan SatelliteStatusUpdate) {
+func (c *Client) SleepSatellite(ctx context.Context, name, orgName string) (out chan SatelliteStatusUpdate) {
 	out = make(chan SatelliteStatusUpdate)
 	go func() {
+		orgID, err := c.GetOrgID(ctx, orgName)
+		if err != nil {
+			out <- SatelliteStatusUpdate{Err: errors.Wrap(err, "failed opening satellite sleep stream")}
+			return
+		}
 		ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer cancel()
 		defer close(out)
@@ -265,7 +338,7 @@ func (c *Client) SleepSatellite(ctx context.Context, name, orgID string) (out ch
 				out <- SatelliteStatusUpdate{Err: errors.New("satellite is in a failed state")}
 				return
 			}
-			out <- SatelliteStatusUpdate{State: satelliteStatus(update.Status)}
+			out <- SatelliteStatusUpdate{State: status}
 		}
 	}()
 	return out
@@ -273,8 +346,10 @@ func (c *Client) SleepSatellite(ctx context.Context, name, orgID string) (out ch
 
 type UpdateSatelliteOpt struct {
 	Name                    string
-	OrgID                   string
+	OrgName                 string
 	PinnedVersion           string
+	Size                    string
+	Platform                string
 	MaintenanceWindowStart  string
 	MaintenanceWeekendsOnly bool
 	DropCache               bool
@@ -282,16 +357,23 @@ type UpdateSatelliteOpt struct {
 }
 
 func (c *Client) UpdateSatellite(ctx context.Context, opt UpdateSatelliteOpt) error {
+	orgID, err := c.GetOrgID(ctx, opt.OrgName)
+	if err != nil {
+		return errors.Wrap(err, "failed listing satellites")
+	}
+
 	req := &pb.UpdateSatelliteRequest{
-		OrgId:                   opt.OrgID,
+		OrgId:                   orgID,
 		Name:                    opt.Name,
 		Version:                 opt.PinnedVersion,
 		DropCache:               opt.DropCache,
 		FeatureFlags:            opt.FeatureFlags,
 		MaintenanceWindowStart:  opt.MaintenanceWindowStart,
 		MaintenanceWeekendsOnly: opt.MaintenanceWeekendsOnly,
+		Size:                    opt.Size,
+		Platform:                opt.Platform,
 	}
-	_, err := c.compute.UpdateSatellite(c.withAuth(ctx), req)
+	_, err = c.compute.UpdateSatellite(c.withAuth(ctx), req)
 	if err != nil {
 		return errors.Wrap(err, "failed getting satellite")
 	}

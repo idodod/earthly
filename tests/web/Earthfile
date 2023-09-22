@@ -1,32 +1,20 @@
-VERSION 0.7
+VERSION --pass-args 0.7
 PROJECT earthly-technologies/core
 
-ARG DOCKERHUB_USER_SECRET=+secrets/DOCKERHUB_USER
-ARG DOCKERHUB_TOKEN_SECRET=+secrets/DOCKERHUB_TOKEN
-ARG DOCKERHUB_MIRROR
-ARG DOCKERHUB_MIRROR_INSECURE=false
-ARG DOCKERHUB_MIRROR_HTTP=false
-ARG DOCKERHUB_AUTH=true
-FROM ../..+earthly-integration-test-base \
-    --DOCKERHUB_AUTH=$DOCKERHUB_AUTH \
-    --DOCKERHUB_USER_SECRET=$DOCKERHUB_USER_SECRET \
-    --DOCKERHUB_TOKEN_SECRET=$DOCKERHUB_TOKEN_SECRET \
-    --DOCKERHUB_MIRROR=$DOCKERHUB_MIRROR \
-    --DOCKERHUB_MIRROR_INSECURE=$DOCKERHUB_MIRROR_INSECURE \
-    --DOCKERHUB_MIRROR_HTTP=$DOCKERHUB_MIRROR_HTTP
+FROM --pass-args ../..+earthly-integration-test-base
 
 IMPORT .. AS tests
 
 WORKDIR /test
 
 test:
-    RUN earthly web 2>&1 | grep -qE "https://ci(-beta)?.earthly.dev/login"
+    RUN earthly web 2>&1 | grep -qE "https://cloud.earthly.dev/login"
     RUN earthly web --provider github 2>output-file \
         && output=$(cat output-file) \
         && rm output-file \
         && if [[ "$output" != *"provider=github"* ]]; then echo "failed to find provider=github in output" && exit 1; fi
 
-    RUN --secret EARTHLY_TOKEN=fake-user-write-token earthly web 2>&1 | grep -qE "https://ci(-beta)?.earthly.dev/login\?token=.+"
+    RUN --secret EARTHLY_TOKEN=fake-user-write-token earthly web 2>&1 | grep -qE "https://cloud.earthly.dev/login\?token=.+"
     RUN --secret EARTHLY_TOKEN=fake-user-write-token earthly web --provider github 2>output-file \
         && output=$(cat output-file) \
         && rm output-file \
@@ -35,7 +23,7 @@ test:
 
     # test correct address if staging
     ENV EARTHLY_GRPC_ADDRESS=some.staging-url.dev
-    RUN earthly web 2>&1 | grep -qE "https://ci-beta.staging.earthly.dev/login"
+    RUN earthly web 2>&1 | grep -qE "https://cloud.staging.earthly.dev/login"
     RUN earthly web --provider github 2>output-file \
         && output=$(cat output-file) \
         && rm output-file \

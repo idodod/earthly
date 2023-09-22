@@ -8,6 +8,7 @@ import (
 
 	"github.com/earthly/cloud-api/logstream"
 	"github.com/earthly/earthly/logbus"
+	"github.com/earthly/earthly/util/stringutil"
 	"github.com/earthly/earthly/util/vertexmeta"
 	"github.com/earthly/earthly/util/xcontext"
 	"github.com/moby/buildkit/client"
@@ -18,7 +19,8 @@ import (
 // SolverMonitor is a buildkit solver monitor.
 type SolverMonitor struct {
 	b        *logbus.Bus
-	vertices map[digest.Digest]*vertexMonitor
+	digests  map[digest.Digest]string  // digest -> cmdID
+	vertices map[string]*vertexMonitor // cmdID -> vertexMonitor
 	mu       sync.Mutex
 }
 
@@ -26,7 +28,8 @@ type SolverMonitor struct {
 func New(b *logbus.Bus) *SolverMonitor {
 	return &SolverMonitor{
 		b:        b,
-		vertices: make(map[digest.Digest]*vertexMonitor),
+		digests:  make(map[digest.Digest]string),
+		vertices: make(map[string]*vertexMonitor),
 	}
 }
 
@@ -68,16 +71,27 @@ func (sm *SolverMonitor) handleBuildkitStatus(ctx context.Context, status *clien
 	defer sm.mu.Unlock()
 	bp := sm.b.Run()
 	for _, vertex := range status.Vertexes {
-		vm, exists := sm.vertices[vertex.Digest]
-		if !exists {
-			meta, operation := vertexmeta.ParseFromVertexPrefix(vertex.Name)
+		meta, operation := vertexmeta.ParseFromVertexPrefix(vertex.Name)
+		var cmdID string
+		switch {
+		case meta.TargetName == "context":
+			cmdID = operation
+		case meta.CommandID != "":
+			cmdID = fmt.Sprintf("%s/%s", meta.TargetID, meta.CommandID)
+		default:
+			cmdID = vertex.Digest.String()
+		}
+		vm, exists := sm.vertices[cmdID]
+		if exists {
+			sm.digests[vertex.Digest] = cmdID
+		} else {
 			// TODO(vladaionescu): Should logbus commands be created in the converter instead?
 			category := meta.TargetName
 			if meta.Internal {
 				category = fmt.Sprintf("internal %s", category)
 			}
 			cp, err := bp.NewCommand(
-				vertex.Digest.String(), operation, meta.TargetID, category, meta.Platform,
+				cmdID, operation, meta.TargetID, category, meta.Platform,
 				vertex.Cached, meta.Local, meta.Interactive, meta.SourceLocation,
 				meta.RepoGitURL, meta.RepoGitHash, meta.RepoFileRelToRepo)
 			if err != nil {
@@ -89,7 +103,8 @@ func (sm *SolverMonitor) handleBuildkitStatus(ctx context.Context, status *clien
 				operation: operation,
 				cp:        cp,
 			}
-			sm.vertices[vertex.Digest] = vm
+			sm.vertices[cmdID] = vm
+			sm.digests[vertex.Digest] = cmdID
 		}
 		vm.vertex = vertex
 		if vertex.Cached {
@@ -115,16 +130,17 @@ func (sm *SolverMonitor) handleBuildkitStatus(ctx context.Context, status *clien
 			if vm.isFatalError {
 				// Run this at the end so that we capture any additional log lines.
 				defer bp.SetFatalError(
-					*vertex.Completed, vm.meta.TargetID, vm.vertex.Digest.String(),
-					vm.fatalErrorType, vm.errorStr)
+					*vertex.Completed, vm.meta.TargetID, cmdID,
+					vm.fatalErrorType, stringutil.ScrubCredentialsAll(vm.errorStr))
 			}
 		}
 	}
 	for _, vs := range status.Statuses {
-		vm, exists := sm.vertices[vs.Vertex]
+		cmdID, exists := sm.digests[vs.Vertex]
 		if !exists {
 			continue
 		}
+		vm := sm.vertices[cmdID]
 		progress := int32(0)
 		if vs.Total != 0 {
 			progress = int32(100.0 * float32(vs.Current) / float32(vs.Total))
@@ -135,10 +151,12 @@ func (sm *SolverMonitor) handleBuildkitStatus(ctx context.Context, status *clien
 		vm.cp.SetProgress(progress)
 	}
 	for _, logLine := range status.Logs {
-		vm, exists := sm.vertices[logLine.Vertex]
+		cmdID, exists := sm.digests[logLine.Vertex]
 		if !exists {
 			continue
 		}
+		vm := sm.vertices[cmdID]
+		logLine.Data = []byte(stringutil.ScrubCredentialsAll((string(logLine.Data))))
 		_, err := vm.Write(logLine.Data, logLine.Timestamp, logLine.Stream)
 		if err != nil {
 			return err

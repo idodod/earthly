@@ -1,6 +1,7 @@
 package features
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -56,10 +57,15 @@ type Features struct {
 	TryFinally                 bool `long:"try" description:"allow the use of the TRY/FINALLY commands"`
 	NoNetwork                  bool `long:"no-network" description:"allow the use of RUN --network=none commands"`
 	ArgScopeSet                bool `long:"arg-scope-and-set" description:"enable SET to reassign ARGs and prevent ARGs from being redeclared in the same scope"`
+	EarthlyCIRunnerArg         bool `long:"earthly-ci-runner-arg" description:"includes EARTHLY_CI_RUNNER ARG"`
+	UseDockerIgnore            bool `long:"use-docker-ignore" description:"fallback to .dockerignore incase .earthlyignore or .earthignore do not exist in a local \"FROM DOCKERFILE\" target"`
+	PassArgs                   bool `long:"pass-args" description:"Allow the use of the --pass-arg flag in FROM, BUILD, COPY, WITH DOCKER, and DO commands"`
 
 	Major int
 	Minor int
 }
+
+type ctxKey struct{}
 
 // Version returns the current version
 func (f *Features) Version() string {
@@ -158,8 +164,8 @@ func instrumentVersion(_ string, opt *goflags.Option, s *string) (*string, error
 	return s, nil // don't modify the flag, just pass it back.
 }
 
-// GetFeatures returns a features struct for a particular version
-func GetFeatures(version *spec.Version) (*Features, bool, error) {
+// Get returns a features struct for a particular version
+func Get(version *spec.Version) (*Features, bool, error) {
 	var ftrs Features
 	hasVersion := (version != nil)
 	if !hasVersion {
@@ -259,4 +265,22 @@ func processNegativeFlags(ftrs *Features) {
 	if ftrs.NoUseRegistryForWithDocker {
 		ftrs.UseRegistryForWithDocker = false
 	}
+}
+
+// WithContext adds the current *Features into the given context and returns a new context.
+// Trying to add the *Features to the context more than once will result in an error.
+func (f *Features) WithContext(ctx context.Context) (context.Context, error) {
+	if ctx.Value(ctxKey{}) != nil {
+		return ctx, errors.New("features is already set")
+	}
+	return context.WithValue(ctx, ctxKey{}, f), nil
+}
+
+// FromContext returns the *Features associated with the ctx.
+// If no features is found, nil is returned.
+func FromContext(ctx context.Context) *Features {
+	if f, ok := ctx.Value(ctxKey{}).(*Features); ok {
+		return f
+	}
+	return nil
 }

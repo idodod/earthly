@@ -1,6 +1,6 @@
 VERSION 0.7
 PROJECT earthly-technologies/core
-FROM alpine:3.15
+FROM alpine:3.18
 
 RUN apk add --update --no-cache \
     curl python3 py3-requests
@@ -21,14 +21,7 @@ release:
 release-dind:
     ARG DOCKERHUB_USER="earthly"
     BUILD ../+all-dind \
-        --DIND_ALPINE_TAG=alpine \
-        --DIND_UBUNTU_TAG=ubuntu \
-        --DOCKERHUB_USER="$DOCKERHUB_USER"
-    BUILD \
-        --platform=linux/amd64 \
-        --platform=linux/arm64 \
-        ../+dind-alpine \
-        --DIND_ALPINE_TAG=latest \
+        --INCLUDE_TARGET_TAG_DOCKER=false \
         --DOCKERHUB_USER="$DOCKERHUB_USER"
 
 release-dockerhub:
@@ -81,7 +74,7 @@ release-notes:
 
 release-github:
     FROM node:16.16.0-alpine3.15
-    RUN apk add file curl jq git
+    RUN apk add file curl jq git gpg gpg-agent
     RUN apk add --update --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing hub
     RUN npm install -g github-release-cli@v1.3.1
     WORKDIR /earthly
@@ -113,6 +106,15 @@ release-github:
     RUN file ./release/earthly-linux-arm64 | grep "aarch64"
     RUN file ./release/earthly-linux-arm64 | grep "ELF 64-bit"
     RUN file ./release/earthly-windows-amd64.exe | grep "PE32"
+
+    RUN \
+        --mount type=secret,id=release/keys/earthly-private.pgp,target=/release-key/earthly-private.pgp \
+        gpg --import /release-key/earthly-private.pgp && \
+        cd release && sha256sum earthly-* > checksum && \
+        cat checksum | gpg --default-key earthly-apt -abs --clearsign --no-emit-version > checksum.asc && rm checksum
+
+    # Defensive check against accidentally copying private key into release directory
+    RUN if grep -R "BEGIN PGP PRIVATE KEY BLOCK" *; then echo "private key was leaked" && exit 1; fi
 
     # TODO: at this point, we should run (some of?) the binaries through
     # end-to-end or acceptance tests. This would guarantee that the release
@@ -232,10 +234,6 @@ release-homebrew:
         if [ "$BREW_REPO" = "homebrew-earthly" ] && [ "$GITHUB_USER" = "earthly" ]; then \
             curl -s -X POST -H 'Content-type: application/json' --data '{"text":"Successfully pushed release branch: https://github.com/earthly/homebrew-earthly/tree/'$RELEASE_BRANCH' (this branch will be automatically deleted via GHA once GHA deploy task finishes)"}' "$SLACK_WEBHOOK_URL"; \
         fi
-
-release-vscode-syntax-highlighting:
-    ARG VSCODE_RELEASE_TAG
-    BUILD ../contrib/earthfile-syntax-highlighting+release --VSCODE_RELEASE_TAG="$VSCODE_RELEASE_TAG"
 
 release-repo:
     ARG --required RELEASE_TAG

@@ -1,32 +1,22 @@
 # Cloud Secrets
 
-{% hint style='danger' %}
-##### Important
-
-This feature is currently in **Beta** stage
-
-* If you encounter any issues, please give us feedback on [Slack](https://earthly.dev/slack) in the `#cloud-secrets` channel.
-{% endhint %}
-
 Earthly has the ability to use secure cloud-based storage for build secrets. This page goes through the basic setup and usage examples.
 
 Cloud secrets can be used to share secrets between team members or across multiple computers and a CI systems.
 
 ## Introduction
 
-This document covers the use of cloud-hosted secrets. It builds upon the understanding of [build arguments and locally-supplied secrets](../guides/build-args.md).
+This page covers the use of cloud-hosted secrets. It builds upon the understanding of [build arguments and locally-supplied secrets](../guides/build-args.md).
 
 ## Managing secrets
 
-In order to be able to use cloud secrets, you need to first register an Earthly cloud account and create an Earthly org. Follow the steps in the [Earthly Cloud overview](../overview.md#getting-started) to get started.
+In order to be able to use cloud secrets, you need to first register an Earthly Cloud account. Visit [Earthly Cloud](https://cloud.earthly.dev) to sign up for free.
 
-Then, you need create an Earthly project. To do that, you may use the command
+Then, you need create an Earthly project. To do that, you may use the web interface or the command...
 
 ```bash
-earthly project --org <org-name> create <project-name>
+earthly project create <project-name>
 ```
-
-Or alternatively, launch the Earthly web interface by running `earthly web`, and clicking on **New Project**.
 
 Access to secrets is controlled by the project they belong to. Anyone with at least `read+secrets` access level for the org or the specific project will be able to see and use the secrets in their builds. Anyone with `write` access level will be able to create, modify and delete secrets. For more information on managing permissions see the [Managing Permissions page](./managing-permissions.md).
 
@@ -35,7 +25,7 @@ Access to secrets is controlled by the project they belong to. Anyone with at le
 Each Earthly project has its own isolated secret store. Multiple code repositories may be associated with a single Earthly project. To view the secrets within a given project, you can run
 
 ```bash
-earthly secret --org <org-name> --project <project-name> ls
+earthly secret --project <project-name> ls
 ```
 
 ### Setting a value
@@ -43,7 +33,7 @@ earthly secret --org <org-name> --project <project-name> ls
 To set a secret value, use the `secret set` command:
 
 ```bash
-earthly secret --org <org-name> --project <project-name> set my_key 'hello world'
+earthly secret --project <project-name> set my_key 'hello world'
 ```
 
 ### Getting a value
@@ -51,8 +41,8 @@ earthly secret --org <org-name> --project <project-name> set my_key 'hello world
 To view a secret value, use the `secret get` command:
 
 ```bash
-earthly secret --org <org-name> --project <project-name> ls
-earthly secret --org <org-name> --project <project-name> get my_key
+earthly secret --project <project-name> ls
+earthly secret --project <project-name> get my_key
 ```
 
 ### User secrets
@@ -93,6 +83,27 @@ Or, to reference a user secret:
 RUN --secret MY_KEY=/user/my_private_key echo $MY_KEY
 ```
 
+## Using Cloud Secrets to log into registries
+
+Cloud secrets can also be used to log into container registries such as DockerHub, AWS ECR, or GCP Artifact Registry. Here is the command to use:
+
+```bash
+earthly registry --org <org-name> --project <project-name> \
+setup --username <registry-user-name> --password-stdin \
+<host>
+```
+
+This command stores the username and password within the cloud secrets store. Earthly picks these up automatically when pulling or pushing images. If the registry is DockerHub, then you can leave out the registry host argument.
+
+You may additionally log into other registries, such as AWS ECR, or GCP Artifact Registry, by using the following:
+
+```bash
+# For AWS ECR
+earthly registry --org <org-name> --project <project-name> setup --cred-helper ecr-login --aws-access-key-id <key> --aws-secret-access-key <secret> <host>
+# For GCP Artifact Registry
+earthly registry --org <org-name> --project <project-name> setup --cred-helper gcloud --gcp-service-account-key <key> <host>
+```
+
 ## Security Details
 
 The Earthly command uses HTTPS to communicate with the cloud secrets server. The server encrypts all secrets using OpenPGP's implementation of AES256 before storing it in a database. We use industry-standard security practices for managing our encryption keys in the cloud. For more information see our [Security page](https://earthly.dev/security).
@@ -113,7 +124,7 @@ earthly secret --org <org-name> --project <project-name> migrate <source-org-nam
 Once migration is complete, you can view the secrets in the new project using `earthly secret ls`.
 
 ```bash
-earthly secret --org <org-name> --project <project-name> ls
+earthly secret --project <project-name> ls
 ```
 
 To update your Earthfile to use the new secrets, you need to add the `PROJECT` declaration at the top of any Earthfile that needs secret access.

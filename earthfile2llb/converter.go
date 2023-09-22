@@ -23,6 +23,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/earthly/cloud-api/logstream"
 	"github.com/earthly/earthly/analytics"
+	"github.com/earthly/earthly/ast/commandflag"
 	"github.com/earthly/earthly/buildcontext"
 	debuggercommon "github.com/earthly/earthly/debugger/common"
 	"github.com/earthly/earthly/domain"
@@ -112,6 +113,7 @@ type Converter struct {
 	waitBlockStack      []*waitBlock
 	isPipeline          bool
 	logbusTarget        *logbus.Target
+	nextCmdID           int
 }
 
 // NewConverter constructs a new converter for a given earthly target.
@@ -128,6 +130,7 @@ func NewConverter(ctx context.Context, target domain.Target, bc *buildcontext.Da
 		Target:           target,
 		Push:             opt.DoPushes,
 		CI:               opt.IsCI,
+		EarthlyCIRunner:  opt.EarthlyCIRunner,
 		PlatformResolver: opt.PlatformResolver,
 		GitMeta:          bc.GitMetadata,
 		BuiltinArgs:      opt.BuiltinArgs,
@@ -173,7 +176,7 @@ func NewConverter(ctx context.Context, target domain.Target, bc *buildcontext.Da
 }
 
 // From applies the earthly FROM command.
-func (c *Converter) From(ctx context.Context, imageName string, platform platutil.Platform, allowPrivileged bool, buildArgs []string) error {
+func (c *Converter) From(ctx context.Context, imageName string, platform platutil.Platform, allowPrivileged, passArgs bool, buildArgs []string) error {
 	err := c.checkAllowed(fromCmd)
 	if err != nil {
 		return err
@@ -191,7 +194,7 @@ func (c *Converter) From(ctx context.Context, imageName string, platform platuti
 	platform = c.setPlatform(platform)
 	if strings.Contains(imageName, "+") {
 		// Target-based FROM.
-		return c.fromTarget(ctx, imageName, platform, allowPrivileged, buildArgs)
+		return c.fromTarget(ctx, imageName, platform, allowPrivileged, passArgs, buildArgs)
 	}
 
 	// Docker image based FROM.
@@ -212,7 +215,7 @@ func (c *Converter) fromClassical(ctx context.Context, imageName string, platfor
 	}
 	state, img, envVars, err := c.internalFromClassical(
 		ctx, imageName, platform,
-		llb.WithCustomNamef("%sFROM %s", c.vertexPrefix(ctx, local, false, internal), imageName))
+		llb.WithCustomNamef("%sFROM %s", c.vertexPrefix(ctx, c.newCmdID(), local, false, internal, nil), imageName))
 	if err != nil {
 		return err
 	}
@@ -223,12 +226,12 @@ func (c *Converter) fromClassical(ctx context.Context, imageName string, platfor
 	return nil
 }
 
-func (c *Converter) fromTarget(ctx context.Context, targetName string, platform platutil.Platform, allowPrivileged bool, buildArgs []string) error {
+func (c *Converter) fromTarget(ctx context.Context, targetName string, platform platutil.Platform, allowPrivileged, passArgs bool, buildArgs []string) error {
 	depTarget, err := domain.ParseTarget(targetName)
 	if err != nil {
 		return errors.Wrapf(err, "parse target name %s", targetName)
 	}
-	mts, err := c.buildTarget(ctx, depTarget.String(), platform, allowPrivileged, buildArgs, false, fromCmd)
+	mts, err := c.buildTarget(ctx, depTarget.String(), platform, allowPrivileged, passArgs, buildArgs, false, fromCmd)
 	if err != nil {
 		return errors.Wrapf(err, "apply build %s", depTarget.String())
 	}
@@ -253,7 +256,12 @@ func (c *Converter) fromTarget(ctx context.Context, targetName string, platform 
 
 // FromDockerfile applies the earthly FROM DOCKERFILE command.
 func (c *Converter) FromDockerfile(ctx context.Context, contextPath string, dfPath string, dfTarget string, platform platutil.Platform, buildArgs []string) error {
-	err := c.checkAllowed(fromDockerfileCmd)
+	var err error
+	ctx, err = c.ftrs.WithContext(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to add feature flags to context")
+	}
+	err = c.checkAllowed(fromDockerfileCmd)
 	if err != nil {
 		return err
 	}
@@ -269,7 +277,7 @@ func (c *Converter) FromDockerfile(ctx context.Context, contextPath string, dfPa
 		dfArtifact, parseErr := domain.ParseArtifact(dfPath)
 		if parseErr == nil {
 			// The Dockerfile is from a target's artifact.
-			mts, err := c.buildTarget(ctx, dfArtifact.Target.String(), platform, false, buildArgs, false, fromDockerfileCmd)
+			mts, err := c.buildTarget(ctx, dfArtifact.Target.String(), platform, false, false, buildArgs, false, fromDockerfileCmd)
 			if err != nil {
 				return err
 			}
@@ -305,7 +313,7 @@ func (c *Converter) FromDockerfile(ctx context.Context, contextPath string, dfPa
 		// The build context is from a target's artifact.
 		// TODO: The build args are used for both the artifact and the Dockerfile. This could be
 		//       confusing to the user.
-		mts, err := c.buildTarget(ctx, contextArtifact.Target.String(), platform, false, buildArgs, false, fromDockerfileCmd)
+		mts, err := c.buildTarget(ctx, contextArtifact.Target.String(), platform, false, false, buildArgs, false, fromDockerfileCmd)
 		if err != nil {
 			return err
 		}
@@ -324,7 +332,7 @@ func (c *Converter) FromDockerfile(ctx context.Context, contextPath string, dfPa
 			c.ftrs.UseCopyLink,
 			llb.WithCustomNamef(
 				"%sFROM DOCKERFILE (copy build context from) %s%s",
-				c.vertexPrefix(ctx, false, false, true),
+				c.vertexPrefix(ctx, c.newCmdID(), false, false, true, nil),
 				joinWrap(buildArgs, "(", " ", ") "), contextArtifact.String()))
 		if err != nil {
 			return errors.Wrapf(err, "copyOp FROM DOCKERFILE")
@@ -438,7 +446,7 @@ func (c *Converter) Locally(ctx context.Context) error {
 }
 
 // CopyArtifactLocal applies the earthly COPY artifact command which are invoked under a LOCALLY target.
-func (c *Converter) CopyArtifactLocal(ctx context.Context, artifactName string, dest string, platform platutil.Platform, allowPrivileged bool, buildArgs []string, isDir bool) error {
+func (c *Converter) CopyArtifactLocal(ctx context.Context, artifactName string, dest string, platform platutil.Platform, allowPrivileged, passArgs bool, buildArgs []string, isDir bool) error {
 	err := c.checkAllowed(copyCmd)
 	if err != nil {
 		return err
@@ -448,7 +456,7 @@ func (c *Converter) CopyArtifactLocal(ctx context.Context, artifactName string, 
 	if err != nil {
 		return errors.Wrapf(err, "parse artifact name %s", artifactName)
 	}
-	mts, err := c.buildTarget(ctx, artifact.Target.String(), platform, allowPrivileged, buildArgs, false, copyCmd)
+	mts, err := c.buildTarget(ctx, artifact.Target.String(), platform, allowPrivileged, passArgs, buildArgs, false, copyCmd)
 	if err != nil {
 		return errors.Wrapf(err, "apply build %s", artifact.Target.String())
 	}
@@ -470,7 +478,7 @@ func (c *Converter) CopyArtifactLocal(ctx context.Context, artifactName string, 
 		pllb.AddMount("/"+localhost.SendFileMagicStr, relevantDepState.ArtifactsState, llb.Readonly),
 		llb.WithCustomNamef(
 			"%sCOPY %s%s%s %s",
-			c.vertexPrefix(ctx, false, false, false),
+			c.vertexPrefix(ctx, c.newCmdID(), false, false, false, nil),
 			strIf(isDir, "--dir "),
 			joinWrap(buildArgs, "(", " ", ") "),
 			artifact.String(),
@@ -485,7 +493,7 @@ func (c *Converter) CopyArtifactLocal(ctx context.Context, artifactName string, 
 }
 
 // CopyArtifact applies the earthly COPY artifact command.
-func (c *Converter) CopyArtifact(ctx context.Context, artifactName string, dest string, platform platutil.Platform, allowPrivileged bool, buildArgs []string, isDir bool, keepTs bool, keepOwn bool, chown string, chmod *fs.FileMode, ifExists, symlinkNoFollow bool) error {
+func (c *Converter) CopyArtifact(ctx context.Context, artifactName string, dest string, platform platutil.Platform, allowPrivileged, passArgs bool, buildArgs []string, isDir bool, keepTs bool, keepOwn bool, chown string, chmod *fs.FileMode, ifExists, symlinkNoFollow bool) error {
 	err := c.checkAllowed(copyCmd)
 	if err != nil {
 		return err
@@ -498,7 +506,7 @@ func (c *Converter) CopyArtifact(ctx context.Context, artifactName string, dest 
 	if err != nil {
 		return errors.Wrapf(err, "parse artifact name %s", artifactName)
 	}
-	mts, err := c.buildTarget(ctx, artifact.Target.String(), platform, allowPrivileged, buildArgs, false, copyCmd)
+	mts, err := c.buildTarget(ctx, artifact.Target.String(), platform, allowPrivileged, passArgs, buildArgs, false, copyCmd)
 	if err != nil {
 		return errors.Wrapf(err, "apply build %s", artifact.Target.String())
 	}
@@ -514,7 +522,7 @@ func (c *Converter) CopyArtifact(ctx context.Context, artifactName string, dest 
 		c.ftrs.UseCopyLink,
 		llb.WithCustomNamef(
 			"%sCOPY %s%s%s%s%s %s",
-			c.vertexPrefix(ctx, false, false, false),
+			c.vertexPrefix(ctx, c.newCmdID(), false, false, false, nil),
 			strIf(isDir, "--dir "),
 			strIf(ifExists, "--if-exists "),
 			strIf(symlinkNoFollow, "--symlink-no-follow "),
@@ -555,7 +563,7 @@ func (c *Converter) CopyClassical(ctx context.Context, srcs []string, dest strin
 		c.ftrs.UseCopyLink,
 		llb.WithCustomNamef(
 			"%sCOPY %s%s%s %s",
-			c.vertexPrefix(ctx, false, false, false),
+			c.vertexPrefix(ctx, c.newCmdID(), false, false, false, nil),
 			strIf(isDir, "--dir "),
 			strIf(ifExists, "--if-exists "),
 			strings.Join(srcs, " "),
@@ -634,7 +642,7 @@ func (c *Converter) RunExitCode(ctx context.Context, opts ConvertRunOpts) (int, 
 				pllb.Mkdir("/run", 0755, llb.WithParents(true)),
 				llb.WithCustomNamef(
 					"%smkdir %s",
-					c.vertexPrefix(ctx, false, false, true), "/run"),
+					c.vertexPrefix(ctx, c.newCmdID(), false, false, true, nil), "/run"),
 			), nil
 		}
 	}
@@ -727,7 +735,7 @@ func (c *Converter) runCommand(ctx context.Context, outputFileName string, isExp
 				pllb.Mkdir(srcBuildArgDir, 0777, llb.WithParents(true)), // Mkdir is performed as root even when USER is set; we must use 0777
 				llb.WithCustomNamef(
 					"%smkdir %s",
-					c.vertexPrefix(ctx, false, false, true), srcBuildArgDir),
+					c.vertexPrefix(ctx, c.newCmdID(), false, false, true, nil), srcBuildArgDir),
 			), nil
 		}
 	}
@@ -813,7 +821,7 @@ func (c *Converter) SaveArtifact(ctx context.Context, saveFrom string, saveTo st
 		c.ftrs.UseCopyLink,
 		llb.WithCustomNamef(
 			"%sSAVE ARTIFACT %s%s%s %s",
-			c.vertexPrefix(ctx, false, false, false),
+			c.vertexPrefix(ctx, c.newCmdID(), false, false, false, nil),
 			strIf(ifExists, "--if-exists "),
 			strIf(symlinkNoFollow, "--symlink-no-follow "),
 			saveFrom,
@@ -831,7 +839,7 @@ func (c *Converter) SaveArtifact(ctx context.Context, saveFrom string, saveTo st
 				c.ftrs.UseCopyLink,
 				llb.WithCustomNamef(
 					"%sSAVE ARTIFACT %s%s%s %s AS LOCAL %s",
-					c.vertexPrefix(ctx, false, false, false),
+					c.vertexPrefix(ctx, c.newCmdID(), false, false, false, nil),
 					strIf(ifExists, "--if-exists "),
 					strIf(symlinkNoFollow, "--symlink-no-follow "),
 					saveFrom,
@@ -847,7 +855,7 @@ func (c *Converter) SaveArtifact(ctx context.Context, saveFrom string, saveTo st
 				c.ftrs.UseCopyLink,
 				llb.WithCustomNamef(
 					"%sSAVE ARTIFACT %s%s%s %s AS LOCAL %s",
-					c.vertexPrefix(ctx, false, false, false),
+					c.vertexPrefix(ctx, c.newCmdID(), false, false, false, nil),
 					strIf(ifExists, "--if-exists "),
 					strIf(symlinkNoFollow, "--symlink-no-follow "),
 					saveFrom,
@@ -953,7 +961,7 @@ func (c *Converter) SaveArtifactFromLocal(ctx context.Context, saveFrom, saveTo 
 		llb.IgnoreCache,
 		llb.WithCustomNamef(
 			"%sCopyFileMagicStr %s %s",
-			c.vertexPrefix(ctx, true, false, true), saveFrom, saveTo),
+			c.vertexPrefix(ctx, c.newCmdID(), true, false, true, nil), saveFrom, saveTo),
 	}
 	c.mts.Final.MainState = c.mts.Final.MainState.Run(opts...).Root()
 
@@ -1021,7 +1029,7 @@ func (c *Converter) PopWaitBlock(ctx context.Context) error {
 }
 
 // SaveImage applies the earthly SAVE IMAGE command.
-func (c *Converter) SaveImage(ctx context.Context, imageNames []string, pushImages bool, insecurePush bool, cacheHint bool, cacheFrom []string, noManifestList bool) error {
+func (c *Converter) SaveImage(ctx context.Context, imageNames []string, hasPushFlag bool, insecurePush bool, cacheHint bool, cacheFrom []string, noManifestList bool) error {
 	err := c.checkAllowed(saveImageCmd)
 	if err != nil {
 		return err
@@ -1051,7 +1059,7 @@ func (c *Converter) SaveImage(ctx context.Context, imageNames []string, pushImag
 					State:               pcState,
 					Image:               c.mts.Final.MainImage.Clone(), // We can get away with this because no Image details can vary in a --push. This should be fixed before then.
 					DockerTag:           imageName,
-					Push:                pushImages,
+					Push:                hasPushFlag,
 					InsecurePush:        insecurePush,
 					CacheHint:           cacheHint,
 					HasPushDependencies: true,
@@ -1064,7 +1072,7 @@ func (c *Converter) SaveImage(ctx context.Context, imageNames []string, pushImag
 				State:               c.persistCache(c.mts.Final.MainState),
 				Image:               c.mts.Final.MainImage.Clone(),
 				DockerTag:           imageName,
-				Push:                pushImages,
+				Push:                hasPushFlag,
 				InsecurePush:        insecurePush,
 				CacheHint:           cacheHint,
 				HasPushDependencies: false,
@@ -1077,12 +1085,12 @@ func (c *Converter) SaveImage(ctx context.Context, imageNames []string, pushImag
 			}
 
 			if c.ftrs.WaitBlock {
-				shouldPush := pushImages && si.DockerTag != "" && c.opt.DoPushes
+				shouldPush := hasPushFlag && si.DockerTag != ""
 				shouldExportLocally := si.DockerTag != "" && c.opt.DoSaves
 				waitItem := newSaveImage(si, c, shouldPush, shouldExportLocally)
 				c.waitBlock().AddItem(waitItem)
 				c.mts.Final.WaitItems = append(c.mts.Final.WaitItems, waitItem)
-				if pushImages {
+				if hasPushFlag {
 					// only add summary for `SAVE IMAGE --push` commands
 					c.opt.ExportCoordinator.AddPushedImageSummary(c.target.StringCanonical(), si.DockerTag, c.mts.Final.ID, c.opt.DoPushes)
 				}
@@ -1097,7 +1105,7 @@ func (c *Converter) SaveImage(ctx context.Context, imageNames []string, pushImag
 			c.mts.Final.SaveImages = append(c.mts.Final.SaveImages, si)
 		}
 
-		if pushImages && imageName != "" && c.opt.UseInlineCache {
+		if hasPushFlag && imageName != "" && c.opt.UseInlineCache {
 			// Use this image tag as cache import too.
 			c.opt.CacheImports.Add(imageName)
 		}
@@ -1110,21 +1118,21 @@ func (c *Converter) SaveImage(ctx context.Context, imageNames []string, pushImag
 }
 
 // Build applies the earthly BUILD command.
-func (c *Converter) Build(ctx context.Context, fullTargetName string, platform platutil.Platform, allowPrivileged bool, buildArgs []string) error {
+func (c *Converter) Build(ctx context.Context, fullTargetName string, platform platutil.Platform, allowPrivileged, passArgs bool, buildArgs []string) error {
 	err := c.checkAllowed(buildCmd)
 	if err != nil {
 		return err
 	}
 	c.nonSaveCommand()
-	_, err = c.buildTarget(ctx, fullTargetName, platform, allowPrivileged, buildArgs, true, buildCmd)
+	_, err = c.buildTarget(ctx, fullTargetName, platform, allowPrivileged, passArgs, buildArgs, true, buildCmd)
 	return err
 }
 
 type afterParallelFunc func(context.Context, *states.MultiTarget) error
 
 // BuildAsync applies the earthly BUILD command asynchronously.
-func (c *Converter) BuildAsync(ctx context.Context, fullTargetName string, platform platutil.Platform, allowPrivileged bool, buildArgs []string, cmdT cmdType, apf afterParallelFunc, sem semutil.Semaphore) error {
-	target, opt, _, err := c.prepBuildTarget(ctx, fullTargetName, platform, allowPrivileged, buildArgs, true, cmdT)
+func (c *Converter) BuildAsync(ctx context.Context, fullTargetName string, platform platutil.Platform, allowPrivileged, passArgs bool, buildArgs []string, cmdT cmdType, apf afterParallelFunc, sem semutil.Semaphore) error {
+	target, opt, _, err := c.prepBuildTarget(ctx, fullTargetName, platform, allowPrivileged, passArgs, buildArgs, true, cmdT)
 	if err != nil {
 		return err
 	}
@@ -1183,7 +1191,7 @@ func (c *Converter) Workdir(ctx context.Context, workdirPath string) error {
 			mkdirOpts = append(mkdirOpts, llb.WithUser(c.mts.Final.MainImage.Config.User))
 		}
 		opts := []llb.ConstraintsOpt{
-			llb.WithCustomNamef("%sWORKDIR %s", c.vertexPrefix(ctx, false, false, false), workdirPath),
+			llb.WithCustomNamef("%sWORKDIR %s", c.vertexPrefix(ctx, c.newCmdID(), false, false, false, nil), workdirPath),
 		}
 		c.mts.Final.MainState = c.mts.Final.MainState.File(
 			pllb.Mkdir(workdirAbs, 0755, mkdirOpts...), opts...)
@@ -1270,7 +1278,7 @@ func (c *Converter) Env(ctx context.Context, envKey string, envValue string) err
 }
 
 // Arg applies the ARG command.
-func (c *Converter) Arg(ctx context.Context, argKey string, defaultArgValue string, opts argOpts) error {
+func (c *Converter) Arg(ctx context.Context, argKey string, defaultArgValue string, opts commandflag.ArgOpts) error {
 	err := c.checkAllowed(argCmd)
 	if err != nil {
 		return err
@@ -1409,7 +1417,7 @@ func (c *Converter) GitClone(ctx context.Context, gitURL string, branch string, 
 		gitState, []string{"."}, c.mts.Final.MainState, dest, false, false, keepTs,
 		c.mts.Final.MainImage.Config.User, nil, false, false, c.ftrs.UseCopyLink,
 		llb.WithCustomNamef(
-			"%sCOPY GIT CLONE (--branch %s) %s TO %s", c.vertexPrefix(ctx, false, false, false),
+			"%sCOPY GIT CLONE (--branch %s) %s TO %s", c.vertexPrefix(ctx, c.newCmdID(), false, false, false, nil),
 			branch, gitURLScrubbed, dest))
 	if err != nil {
 		return errors.Wrapf(err, "copyOp git clone")
@@ -1546,7 +1554,7 @@ func (c *Converter) Project(ctx context.Context, org, project string) error {
 	c.nonSaveCommand()
 	c.varCollection.SetOrg(org)
 	c.varCollection.SetProject(project)
-	c.opt.CloudStoredAuthProvider.AddProject(org, project)
+	c.opt.ProjectAdder.AddProject(org, project)
 	return nil
 }
 
@@ -1579,8 +1587,13 @@ func (c *Converter) ResolveReference(ctx context.Context, ref domain.Reference) 
 }
 
 // EnterScopeDo introduces a new variable scope. Globals and imports are fetched from baseTarget.
-func (c *Converter) EnterScopeDo(ctx context.Context, command domain.Command, baseTarget domain.Target, allowPrivileged bool, scopeName string, buildArgs []string) error {
-	baseMts, err := c.buildTarget(ctx, baseTarget.String(), c.platr.Current(), allowPrivileged, buildArgs, true, enterScopeDoCmd)
+func (c *Converter) EnterScopeDo(ctx context.Context, command domain.Command, baseTarget domain.Target, allowPrivileged, passArgs bool, scopeName string, buildArgs []string) error {
+	topArgs := buildArgs
+	if c.ftrs.ArgScopeSet {
+		topArgs = c.varCollection.TopOverriding().BuildArgs()
+	}
+
+	baseMts, err := c.buildTarget(ctx, baseTarget.String(), c.platr.Current(), allowPrivileged, passArgs, topArgs, true, enterScopeDoCmd)
 	if err != nil {
 		return err
 	}
@@ -1592,6 +1605,9 @@ func (c *Converter) EnterScopeDo(ctx context.Context, command domain.Command, ba
 	overriding, err := variables.ParseArgs(buildArgs, pncvf, c.varCollection)
 	if err != nil {
 		return err
+	}
+	if passArgs {
+		overriding = variables.CombineScopes(overriding, c.varCollection.Overriding())
 	}
 	c.varCollection.EnterFrame(
 		scopeName, command, overriding, baseMts.Final.VarCollection.Globals(),
@@ -1686,7 +1702,7 @@ func (c *Converter) ExpandArgs(ctx context.Context, runOpts ConvertRunOpts, word
 	})
 }
 
-func (c *Converter) prepBuildTarget(ctx context.Context, fullTargetName string, platform platutil.Platform, allowPrivileged bool, buildArgs []string, isDangling bool, cmdT cmdType) (domain.Target, ConvertOpt, bool, error) {
+func (c *Converter) prepBuildTarget(ctx context.Context, fullTargetName string, platform platutil.Platform, allowPrivileged, passArgs bool, buildArgs []string, isDangling bool, cmdT cmdType) (domain.Target, ConvertOpt, bool, error) {
 	relTarget, err := domain.ParseTarget(fullTargetName)
 	if err != nil {
 		return domain.Target{}, ConvertOpt{}, false, errors.Wrapf(err, "earthly target parse %s", fullTargetName)
@@ -1713,9 +1729,9 @@ func (c *Converter) prepBuildTarget(ctx context.Context, fullTargetName string, 
 	if err != nil {
 		return domain.Target{}, ConvertOpt{}, false, errors.Wrap(err, "parse build args")
 	}
-	// Don't allow transitive overriding variables to cross project boundaries.
+	// Don't allow transitive overriding variables to cross project boundaries (unless --pass-args is used).
 	propagateBuildArgs := !relTarget.IsExternal()
-	if propagateBuildArgs {
+	if passArgs || propagateBuildArgs {
 		overriding = variables.CombineScopes(overriding, c.varCollection.Overriding())
 	}
 
@@ -1749,8 +1765,8 @@ func (c *Converter) prepBuildTarget(ctx context.Context, fullTargetName string, 
 	return target, opt, propagateBuildArgs, nil
 }
 
-func (c *Converter) buildTarget(ctx context.Context, fullTargetName string, platform platutil.Platform, allowPrivileged bool, buildArgs []string, isDangling bool, cmdT cmdType) (*states.MultiTarget, error) {
-	target, opt, propagateBuildArgs, err := c.prepBuildTarget(ctx, fullTargetName, platform, allowPrivileged, buildArgs, isDangling, cmdT)
+func (c *Converter) buildTarget(ctx context.Context, fullTargetName string, platform platutil.Platform, allowPrivileged, passArgs bool, buildArgs []string, isDangling bool, cmdT cmdType) (*states.MultiTarget, error) {
+	target, opt, propagateBuildArgs, err := c.prepBuildTarget(ctx, fullTargetName, platform, allowPrivileged, passArgs, buildArgs, isDangling, cmdT)
 	if err != nil {
 		return nil, err
 	}
@@ -1896,10 +1912,15 @@ func (c *Converter) internalRun(ctx context.Context, opts ConvertRunOpts) (pllb.
 		strIf(opts.Interactive, "--interactive "),
 		strIf(opts.InteractiveKeep, "--interactive-keep "),
 		strings.Join(opts.Args, " "))
-	runOpts = append(runOpts, llb.WithCustomNamef("%s%s", c.vertexPrefix(ctx, opts.Locally, isInteractive, false), commandStr))
+	runOpts = append(runOpts, llb.WithCustomNamef("%s%s", c.vertexPrefix(ctx, c.newCmdID(), opts.Locally, isInteractive, false, opts.Secrets), commandStr))
 
 	var extraEnvVars []string
 
+	// Build args.
+	for _, buildArgName := range c.varCollection.SortedVariables(variables.WithActive()) {
+		ba, _ := c.varCollection.Get(buildArgName, variables.WithActive())
+		extraEnvVars = append(extraEnvVars, fmt.Sprintf("%s=%s", buildArgName, shellescape.Quote(ba)))
+	}
 	// Secrets.
 	for _, secretKeyValue := range opts.Secrets {
 		secretName, envVar, err := c.parseSecretFlag(secretKeyValue)
@@ -1918,11 +1939,6 @@ func (c *Converter) internalRun(ctx context.Context, opts ConvertRunOpts) (pllb.
 			// TODO: The use of cat here might not be portable.
 			extraEnvVars = append(extraEnvVars, fmt.Sprintf("%s=\"$(cat %s)\"", envVar, secretPath))
 		}
-	}
-	// Build args.
-	for _, buildArgName := range c.varCollection.SortedVariables(variables.WithActive()) {
-		ba, _ := c.varCollection.Get(buildArgName, variables.WithActive())
-		extraEnvVars = append(extraEnvVars, fmt.Sprintf("%s=%s", buildArgName, shellescape.Quote(ba)))
 	}
 	if !opts.Locally {
 		// Debugger.
@@ -2224,15 +2240,15 @@ func (c *Converter) internalFromClassical(ctx context.Context, imageName string,
 		img.Architecture = llbPlatform.Architecture
 		return pllb.Scratch().Platform(llbPlatform), img, nil, nil
 	}
-	ref, err := reference.ParseNormalizedNamed(imageName)
+	sourceRef, err := reference.ParseNormalizedNamed(imageName)
 	if err != nil {
 		return pllb.State{}, nil, nil, errors.Wrapf(err, "parse normalized named %s", imageName)
 	}
-	baseImageName := reference.TagNameOnly(ref).String()
+	baseImageName := reference.TagNameOnly(sourceRef).String()
 	logName := fmt.Sprintf(
 		"%sLoad metadata %s %s",
 		c.imageVertexPrefix(imageName, platform), imageName, platforms.Format(llbPlatform))
-	dgst, dt, err := c.opt.MetaResolver.ResolveImageConfig(
+	ref, dgst, dt, err := c.opt.MetaResolver.ResolveImageConfig(
 		ctx, baseImageName,
 		llb.ResolveImageConfigOpt{
 			Platform:    &llbPlatform,
@@ -2242,19 +2258,23 @@ func (c *Converter) internalFromClassical(ctx context.Context, imageName string,
 	if err != nil {
 		return pllb.State{}, nil, nil, errors.Wrapf(err, "resolve image config for %s", imageName)
 	}
+	sourceRef, err = reference.ParseNormalizedNamed(ref)
+	if err != nil {
+		return pllb.State{}, nil, nil, errors.Wrapf(err, "parse normalized named %s", ref)
+	}
 	var img image.Image
 	err = json.Unmarshal(dt, &img)
 	if err != nil {
 		return pllb.State{}, nil, nil, errors.Wrapf(err, "unmarshal image config for %s", imageName)
 	}
 	if dgst != "" {
-		ref, err = reference.WithDigest(ref, dgst)
+		sourceRef, err = reference.WithDigest(sourceRef, dgst)
 		if err != nil {
 			return pllb.State{}, nil, nil, errors.Wrapf(err, "reference add digest %v for %s", dgst, imageName)
 		}
 	}
 	allOpts := append(opts, llb.Platform(c.platr.ToLLBPlatform(platform)), c.opt.ImageResolveMode)
-	state := pllb.Image(ref.String(), allOpts...)
+	state := pllb.Image(sourceRef.String(), allOpts...)
 	state, img2, envVars := c.applyFromImage(state, &img)
 	return state, img2, envVars, nil
 }
@@ -2325,7 +2345,7 @@ func (c *Converter) processNonConstantBuildArgFunc(ctx context.Context) variable
 	}
 }
 
-func (c *Converter) vertexPrefix(ctx context.Context, local bool, interactive bool, internal bool) string {
+func (c *Converter) vertexPrefix(ctx context.Context, cmdID int, local bool, interactive bool, internal bool, secrets []string) string {
 	activeOverriding := make(map[string]string)
 	for _, arg := range c.varCollection.SortedOverridingVariables() {
 		v, ok := c.varCollection.Get(arg, variables.WithActive())
@@ -2347,6 +2367,7 @@ func (c *Converter) vertexPrefix(ctx context.Context, local bool, interactive bo
 		RepoGitURL:          gitURL,
 		RepoGitHash:         gitHash,
 		RepoFileRelToRepo:   fileRelToRepo,
+		CommandID:           fmt.Sprintf("%d", cmdID),
 		TargetID:            c.mts.Final.ID,
 		TargetName:          c.mts.Final.Target.String(),
 		CanonicalTargetName: c.mts.Final.Target.StringCanonical(),
@@ -2355,6 +2376,7 @@ func (c *Converter) vertexPrefix(ctx context.Context, local bool, interactive bo
 		Local:               local,
 		Interactive:         interactive,
 		OverridingArgs:      activeOverriding,
+		Secrets:             secrets,
 		Internal:            internal,
 		Runner:              c.opt.Runner,
 	}
@@ -2486,6 +2508,12 @@ func (c *Converter) persistCache(srcState pllb.State) pllb.State {
 	}
 
 	return dest
+}
+
+func (c *Converter) newCmdID() int {
+	cmdID := c.nextCmdID
+	c.nextCmdID++
+	return cmdID
 }
 
 func joinWrap(a []string, before string, sep string, after string) string {

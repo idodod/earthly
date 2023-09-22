@@ -1,9 +1,9 @@
 
 # GitHub Actions integration
 
-Here is an example of a GitHub Actions build that uses the [https://github.com/earthly/actions/setup-earthly](earthly/actions/setup-earthly action).
+Here is an example of a GitHub Actions build that uses the [earthly/actions-setup](https://github.com/earthly/actions-setup).
 
-This example assumes an [Earthfile](../earthfile/earthfile.md) exists with a `+build` target:
+This example assumes an [Earthfile](../../earthfile/earthfile.md) exists with a `+build` target:
 
 ```yml
 # .github/workflows/ci.yml
@@ -24,9 +24,9 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
       FORCE_COLOR: 1
     steps:
-    - uses: earthly/actions/setup-earthly@v1
+    - uses: earthly/actions-setup@v1
       with:
-        version: v0.7.0
+        version: v0.7.8
     - uses: actions/checkout@v2
     - name: Put back the git branch into git (Earthly uses it for tagging)
       run: |
@@ -45,7 +45,7 @@ jobs:
       run: earthly --push +build
 ```
 
-Alternatively, you can skip using the `earthly/actions/setup-earthly` job and include
+Alternatively, you can skip using the `earthly/actions-setup` job and include
 a step to download earthly instead:
 
 ```yml
@@ -80,7 +80,7 @@ jobs:
     - name: Docker Login
       run: docker login --username "$DOCKERHUB_USERNAME" --password "$DOCKERHUB_TOKEN"
     - name: Download latest earthly
-      run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.6.30/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly'"
+      run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.7.19/earthly-linux-amd64 -O /usr/local/bin/earthly && chmod +x /usr/local/bin/earthly'"
     - name: Earthly version
       run: earthly --version
     - name: Run build

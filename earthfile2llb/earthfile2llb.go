@@ -13,7 +13,6 @@ import (
 	"github.com/earthly/earthly/states"
 	"github.com/earthly/earthly/util/containerutil"
 	"github.com/earthly/earthly/util/gatewaycrafter"
-	"github.com/earthly/earthly/util/llbutil/authprovider/cloudauth"
 	"github.com/earthly/earthly/util/llbutil/secretprovider"
 	"github.com/earthly/earthly/util/platutil"
 	"github.com/earthly/earthly/util/syncutil/semutil"
@@ -24,6 +23,10 @@ import (
 	"github.com/moby/buildkit/util/apicaps"
 	"github.com/pkg/errors"
 )
+
+type ProjectAdder interface {
+	AddProject(org, proj string)
+}
 
 // ConvertOpt holds conversion parameters.
 type ConvertOpt struct {
@@ -92,6 +95,8 @@ type ConvertOpt struct {
 	DoPushes bool
 	// IsCI determines whether it is running from a CI environment.
 	IsCI bool
+	// EarthlyCIRunner determines whether it is running from an Earthly CI environment.
+	EarthlyCIRunner bool
 	// ForceSaveImage is used to force all SAVE IMAGE commands are executed regardless of if they are
 	// for a local or remote target; this is to support the legacy behaviour that was first introduced in earthly (up to 0.5)
 	// When this is set to false, SAVE IMAGE commands are only executed when DoSaves is true.
@@ -155,8 +160,8 @@ type ConvertOpt struct {
 	// LLBCaps indicates that builder's capabilities
 	LLBCaps *apicaps.CapSet
 
-	// MainTargetDetailsFuture is a channel that is used to signal the main target details, once known.
-	MainTargetDetailsFuture chan TargetDetails
+	// MainTargetDetailsFunc is a custom function used to handle the target details, once known.
+	MainTargetDetailsFunc func(TargetDetails) error
 
 	// Logbus is the bus used for logging and metadata reporting.
 	Logbus *logbus.Bus
@@ -168,7 +173,7 @@ type ConvertOpt struct {
 	// * "sat:<org-name>/<sat-name>" - remote builds via satellite
 	Runner string
 
-	CloudStoredAuthProvider cloudauth.ProjectBasedAuthProvider
+	ProjectAdder ProjectAdder
 }
 
 // TargetDetails contains details about the target being built.
@@ -236,13 +241,15 @@ func Earthfile2LLB(ctx context.Context, target domain.Target, opt ConvertOpt, in
 	if err != nil {
 		return nil, err
 	}
-	if opt.MainTargetDetailsFuture != nil {
-		// TODO (vladaionescu): These should perhaps be passed back via logbus instead.
-		opt.MainTargetDetailsFuture <- TargetDetails{
+	if opt.MainTargetDetailsFunc != nil {
+		err := opt.MainTargetDetailsFunc(TargetDetails{
 			EarthlyOrgName:     bc.EarthlyOrgName,
 			EarthlyProjectName: bc.EarthlyProjectName,
+		})
+		if err != nil {
+			return nil, errors.Wrapf(err, "target details handler error: %v", err)
 		}
-		opt.MainTargetDetailsFuture = nil
+		opt.MainTargetDetailsFunc = nil
 	}
 	if found {
 		// The found target may have initially been created by a FROM or a COPY;

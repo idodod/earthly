@@ -1,19 +1,7 @@
-VERSION 0.7
+VERSION --pass-args 0.7
 PROJECT earthly-technologies/core
 
-ARG DOCKERHUB_USER_SECRET=+secrets/DOCKERHUB_USER
-ARG DOCKERHUB_TOKEN_SECRET=+secrets/DOCKERHUB_TOKEN
-ARG DOCKERHUB_MIRROR
-ARG DOCKERHUB_MIRROR_INSECURE=false
-ARG DOCKERHUB_MIRROR_HTTP=false
-ARG DOCKERHUB_AUTH=true
-FROM ../..+earthly-integration-test-base \
-    --DOCKERHUB_AUTH=$DOCKERHUB_AUTH \
-    --DOCKERHUB_USER_SECRET=$DOCKERHUB_USER_SECRET \
-    --DOCKERHUB_TOKEN_SECRET=$DOCKERHUB_TOKEN_SECRET \
-    --DOCKERHUB_MIRROR=$DOCKERHUB_MIRROR \
-    --DOCKERHUB_MIRROR_INSECURE=$DOCKERHUB_MIRROR_INSECURE \
-    --DOCKERHUB_MIRROR_HTTP=$DOCKERHUB_MIRROR_HTTP
+FROM --pass-args ../..+earthly-integration-test-base
 
 IMPORT .. AS tests
 
@@ -61,7 +49,23 @@ test-gcp:
         --entrypoint \
         --mount=type=tmpfs,target=/tmp/earthly
 
+test-multi:
+    COPY lock.sh unlock.sh \
+        test-multi.sh \
+        .
+
+    ENV EARTHLY_EXEC_CMD=/test/test-multi.sh
+    RUN --secret EARTHLY_TOKEN=fake-user-write-token \
+        --secret GCP_KEY=gcp/ci-cd-key \
+        --secret AWS_ACCESS_KEY_ID=aws/ci-cd-access-key \
+        --secret AWS_SECRET_ACCESS_KEY=aws/ci-cd-access-secret \
+        --mount=type=tmpfs,target=/tmp/earthly \
+        --privileged \
+        --entrypoint \
+        --mount=type=tmpfs,target=/tmp/earthly
+
 test:
     BUILD +test-dockerhub
     BUILD +test-ecr
     BUILD +test-gcp
+    BUILD +test-multi

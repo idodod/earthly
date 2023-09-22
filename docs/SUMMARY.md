@@ -2,7 +2,7 @@
 # Table of contents
 
 * [👋 Introduction](README.md)
-* [💻 Installation](https://earthly.dev/get-earthly)
+* [💻 Get started for free](https://cloud.earthly.dev/login)
 * [🎓 Learn the basics](basics/basics.md)
     * [Part 1: A simple Earthfile](basics/part-1-a-simple-earthfile.md)
     * [Part 2: Outputs](basics/part-2-outputs.md)
@@ -10,6 +10,8 @@
     * [Part 4: Args](basics/part-4-args.md)
     * [Part 5: Importing](basics/part-5-importing.md)
     * [Part 6: Using Docker In Earthly](basics/part-6-using-docker-with-earthly.md)
+    * [Part 7: Using remote runners](basics/part-7-using-remote-runners.md)
+    * [Part 8a: Using Earthly in your current CI](basics/part-8a-using-earthly-in-your-current-ci.md)
     * [Final words](basics/final-words.md)
 * [✅ Best practices](best-practices/best-practices.md)
 
@@ -66,13 +68,13 @@
     * [Google Cloud Build](ci-integration/guides/google-cloud-build.md)
     * [GitLab CI/CD](ci-integration/guides/gitlab-integration.md)
     * [Woodpecker CI](ci-integration/guides/woodpecker-integration.md)
+    * [Bitbucket Pipelines](ci-integration/guides/bitbucket-pipelines-integration.md)
 
 ## ☁️ Earthly Cloud
 
 * [Overview](cloud/overview.md)
 * [Managing permissions](cloud/managing-permissions.md)
 * [Cloud secrets](cloud/cloud-secrets.md)
-* [Satellites](cloud/satellites.md)
+* [Earthly Satellites](cloud/satellites.md)
     * [Managing Satellites](cloud/satellites/managing.md)
     * [Using Satellites](cloud/satellites/using.md)
-* [Earthly CI](cloud/earthly-ci.md)

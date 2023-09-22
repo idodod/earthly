@@ -64,11 +64,11 @@ The `FROM` command does not mark any saved images or artifacts of the referenced
 ##### Note
 
 The `FROM ... AS ...` form available in the classical Dockerfile syntax is not supported in Earthfiles. Instead, define a new Earthly target. For example, the following Dockerfile
- 
+
 ```Dockerfile
 # Dockerfile
 
-FROM alpine:3.15 AS build
+FROM alpine:3.18 AS build
 # ... instructions for build
 
 FROM build as another
@@ -84,7 +84,7 @@ can become
 # Earthfile
 
 build:
-    FROM alpine:3.15
+    FROM alpine:3.18
     # ... instructions for build
     SAVE ARTIFACT ./a-file
 
@@ -209,7 +209,7 @@ earthly --allow-privileged +some-target
 
 ##### `--secret <env-var>=<secret-id> | <secret-id>`
 
-Makes available a secret, in the form of an env var (its name is defined by `<env-var>`), to the command being executed. 
+Makes available a secret, in the form of an env var (its name is defined by `<env-var>`), to the command being executed.
 If you only specify `<secret-id>`, the name of the env var will be `<secret-id>` and its value the value of `<secret-id>`.
 
 Here is an example that showcases both syntaxes:
@@ -259,6 +259,10 @@ RUN mkdir -p ~/.ssh && \
 RUN --ssh git config --global url."git@github.com:".insteadOf "https://github.com/" && \
     go mod download
 ```
+
+{% hint style='warning' %}
+Note that `RUN --ssh` option is only used for creating a tunnel to the host's ssh-agent's socket (set via `$SSH_AUTH_SOCK`); it is **not** related to the git section of the earthly [configuration file](../earthly-config/earthly-config.md).
+{% endhint %}
 
 ##### `--mount <mount-spec>`
 
@@ -325,7 +329,7 @@ Opens an interactive prompt during the target build. An interactive prompt must:
 Start an interactive python REPL:
 ```Dockerfile
 python:
-    FROM alpine:3.15
+    FROM alpine:3.18
     RUN apk add python
     RUN --interactive python
 ```
@@ -333,7 +337,7 @@ python:
 Start `bash` to tweak an image by hand. Changes made will be included:
 ```Dockerfile
 build:
-    FROM alpine:3.15
+    FROM alpine:3.18
     RUN apk add bash
     RUN --interactive-keep bash
 ```
@@ -415,6 +419,20 @@ Note that you must include the flag in the corresponding `SAVE ARTIFACT --keep-o
 
 Only copy source if it exists; if it does not exist, earthly will simply ignore the COPY command and won't treat any missing sources as failures.
 
+##### `--symlink-no-follow`
+
+Allows copying a symbolic link from another target; it has no effect when copying files from the host.
+The option must be used in both the `COPY` and `SAVE ARTIFACT` commands; for example:
+
+```Dockerfile
+producer:
+    RUN ln -s nonexistentfile symlink
+    SAVE ARTIFACT --symlink-no-follow symlink
+
+consumer:
+    COPY --symlink-no-follow +producer/symlink
+```
+
 ##### `--from`
 
 Although this option is present in classical Dockerfile syntax, it is not supported by Earthfiles. You may instead use a combination of `SAVE ARTIFACT` and `COPY` *artifact form* commands to achieve similar effects. For example, the following Dockerfile
@@ -478,7 +496,7 @@ COPY --dir test .
 One can also copy from other Earthfile targets:
 
 ```
-FROM alpine:3.15
+FROM alpine:3.18
 dummy-target:
     RUN echo aGVsbG8= > encoded-data
     SAVE ARTIFACT encoded-data
@@ -490,7 +508,7 @@ example:
 Parentheses are required when passing build-args:
 
 ```
-FROM alpine:3.15
+FROM alpine:3.18
 RUN apk add coreutils # required for base32 binary
 dummy-target:
     ARG encoder="base64"
@@ -541,6 +559,25 @@ FROM +docker-image --NAME=john
 ```
 
 For more information on how to use build args see the [build arguments and secrets guide](../guides/build-args.md). A number of builtin args are available and are pre-filled by Earthly. For more information see [builtin args](./builtin-args.md).
+
+{% hint style='info' %}
+##### Shadowing Variables
+
+By default, `ARG` scoping isn't intuitive. When an `ARG` statement is parsed, earthly will look up _any_ previous declaration of the `ARG` and use the previous value, ignoring any new default. So for example:
+
+```
+VERSION 0.7
+ARG --global foo = bar
+
+baz:
+    ARG foo = bacon
+    RUN echo $foo
+```
+
+would print `bar`.
+
+The experimental `--arg-scope-and-set` feature flag changes this behavior. With `VERSION --arg-scope-and-set 0.7` local `ARG`s may shadow global `ARG`s, and redeclaring an `ARG` in the same scope will cause an error. This means that the above example would instead print `bacon`.
+{% endhint %}
 
 #### Options
 
@@ -623,6 +660,20 @@ Instructs Earthly to keep file ownership information.
 ##### `--if-exists`
 
 Only save artifacts if they exists; if not, earthly will simply ignore the SAVE ARTIFACT command and won't treat any missing sources as failures.
+
+##### `--symlink-no-follow`
+
+Save the symbolic link rather than the contents of the symbolically linked file. Note that the same flag must also be used in the corresponding `COPY` command. For example:
+
+```Dockerfile
+producer:
+    RUN ln -s nonexistentfile symlink
+    SAVE ARTIFACT --symlink-no-follow symlink
+
+consumer:
+    COPY --symlink-no-follow +producer/symlink
+```
+
 
 ##### `--force`
 
@@ -864,6 +915,7 @@ Instructs Earthly to not overwrite the file creation timestamps with a constant.
 The `FROM DOCKERFILE` command initializes a new build environment, inheriting from an existing Dockerfile. This allows the use of Dockerfiles in Earthly builds.
 
 The `<context-path>` is the path where the Dockerfile build context exists. By default, it is assumed that a file named `Dockerfile` exists in that directory. The context path can be either a path on the host system, or an [artifact reference](../guides/target-ref.md#artifact-reference), pointing to a directory containing a `Dockerfile`.
+Additionally, when using a `<context-path>` from the host system, a `.dockerignore` in the directory root will be used to exclude files (unless `.earthlyignore` or `.earthignore` are present). Use `VERSION --use-docker-ignore 0.7` to enable.
 
 #### Options
 
@@ -1062,7 +1114,7 @@ For example, the following is NOT a valid Earthfile.
 # NOT A VALID EARTHFILE.
 ARG base=alpine
 IF [ "$base" = "alpine" ]
-    FROM alpine:3.15
+    FROM alpine:3.18
 ELSE
     FROM ubuntu:20.04
 END
@@ -1076,7 +1128,7 @@ Here is how this might be fixed.
 ARG base=alpine
 FROM busybox
 IF [ "$base" = "alpine" ]
-    FROM alpine:3.15
+    FROM alpine:3.18
 ELSE
     FROM ubuntu:20.04
 END
@@ -1224,6 +1276,57 @@ END
 RUN ./test data # even if this fails, data will have been output
 ```
 
+## LET (experimental)
+
+{% hint style='info' %}
+##### Note
+The `LET` command is currently incomplete and has experimental status. To use this feature, it must be enabled via `VERSION --arg-scope-and-set 0.7`.
+{% endhint %}
+
+#### Synopsis
+
+* `LET <name>=<value>`
+
+#### Description
+
+The command `LET` declares a variable with the name `<name>` and with a value `<value>`. This command works similarly to `ARG` except that it cannot be overridden from the CLI.
+
+`LET` variables are allowed to shadow `ARG` variables, which allows you to promote an `ARG` to a local variable so that it may be used with `SET`.
+
+##### Example
+
+```
+VERSION --arg-scope-and-set 0.7
+
+# mode defines the build mode. Valid values are 'dev' and 'prod'.
+ARG --global mode = dev
+
+foo:
+    LET buildArgs = --mode development
+    IF [ "$mode" = "prod" ]
+        SET buildArgs = --mode production --optimize
+    END
+```
+
+## SET (experimental)
+
+{% hint style='info' %}
+##### Note
+The `SET` command is currently incomplete and has experimental status. To use this feature, it must be enabled via `VERSION --arg-scope-and-set 0.7`.
+{% endhint %}
+
+#### Synopsis
+
+* `SET <name>=<value>`
+
+#### Description
+
+The command `SET` may be used to change the value of a previously declared variable, so long as the variable was declared with `LET`.
+
+`ARG` variables may *not* be changed by `SET`, since `ARG` is intended to accept overrides from the CLI. If you want to change the value of an `ARG` variable, redeclare it with `LET someVar = "$someVar"` first.
+
+See [the `LET` docs for more info](#let).
+
 ## TRY (experimental)
 
 {% hint style='info' %}
@@ -1301,7 +1404,7 @@ This feature should be used with caution as locally run commands have no guarant
 
 Only `RUN` commands are supported under a `LOCALLY` defined target; furthermore only `RUN`'s `--push` flag is supported.
 
-`RUN` commands have access to the environment variables which are exposed to the `earthly` command; however, the commands 
+`RUN` commands have access to the environment variables which are exposed to the `earthly` command; however, the commands
 are executed within a working directory which is set to the location of the referenced Earthfile and not where the `earthly` command is run from.
 
 For example, the following Earthfile will display the current user, hostname, and directory where the Earthfile is stored:
@@ -1575,7 +1678,7 @@ Sets the number of retries before a container is considered `unhealthy`. Default
 
 The `HOST` command creates a hostname entry (under `/etc/hosts`) that causes `<hostname>` to resolve to the specified `<ip>` address.
 
-## PIPELINE (beta)
+## PIPELINE (**deprecated**)
 
 {% hint style='info' %}
 ##### Note
@@ -1609,7 +1712,7 @@ The following example shows a simple pipeline called `my-pipeline`, which is tri
 VERSION 0.7
 PROJECT my-org/my-project
 
-FROM alpine:3.15
+FROM alpine:3.18
 
 my-pipeline:
   PIPELINE
@@ -1627,7 +1730,7 @@ my-build:
 
 Indicates that the targets referenced by this pipeline will be called in push-mode. `SAVE IMAGE --push` commands will trigger pushes to the remote registry, and `RUN --push` commands will execute.
 
-## TRIGGER (beta)
+## TRIGGER (**deprecated**)
 
 {% hint style='info' %}
 ##### Note

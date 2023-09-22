@@ -11,8 +11,8 @@ build:
     COPY src src
     SAVE ARTIFACT src /src
 
-with-docker-example:
-	FROM earthly/dind:alpine
+integration-tests:
+	FROM earthly/dind:alpine-3.18
 	COPY ./docker-compose.yml .
 	COPY ./tests ./tests
 	RUN apk update

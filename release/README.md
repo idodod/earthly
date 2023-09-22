@@ -5,10 +5,6 @@
   ```bash
   ./earthly secrets ls /earthly-technologies
   ```
-* Make sure you have uploaded your aws credentials to your user secrets.
-  ```bash
-  ./earthly secrets get /user/earthly-technologies/aws/credentials
-  ```
 * Choose the next [release tag](https://github.com/earthly/earthly/releases).
   ```bash
   export RELEASE_TAG="v..."
@@ -34,7 +30,7 @@
   ```bash
   env -i HOME="$HOME" PATH="$PATH" SSH_AUTH_SOCK="$SSH_AUTH_SOCK" RELEASE_TAG="$RELEASE_TAG" USER="$USER" PRERELEASE="$PRERELEASE" ./release.sh
   ```
-* Merge branch `main` into `docs-0.7`, then merge branch `docs-0.7` into `main`.
+* Merge branch `main` into `docs-0.7`
 * Update the version for the installation command in the following places:
 <!-- vale HouseStyle.Spelling = NO -->
   * [circle-integration.md](../docs/ci-integration/guides/circle-integration.md)
@@ -61,6 +57,8 @@
 <!-- vale HouseStyle.Spelling = NO -->
   * [all-in-one.md](../docs/docker-images/all-in-one.md)
   * [buildkit-standalone.md](../docs/docker-images/buildkit-standalone.md)
+* Commit updated version changes to `docs-0.7`.
+* Merge `docs-0.7` into `main`.
 <!-- vale HouseStyle.Spelling = YES -->
 * After GitBook has processed the `main` branch, run a broken link checker over https://docs.earthly.dev. This one is fast and easy: https://www.deadlinkchecker.com/.
 * Verify the [Homebrew release job](https://github.com/earthly/homebrew-earthly) has successfully run and has merged the new `release-v...` branch into `main`.
@@ -118,27 +116,72 @@ These images can be rebuilt by running:
   ./earthly --push ./release+release-dind
   ```
 
-### VS Code syntax highlighting
+### Syntax Highlighting Releases
 
-* First set the version to publish:
-  ```bash
-  export VSCODE_RELEASE_TAG="v..."
-  ```
-  (You can [see what is already published](https://marketplace.visualstudio.com/items?itemName=earthly.earthfile-syntax-highlighting))
-* Make sure that the version has release notes already in the [README](../contrib/earthfile-syntax-highlighting/README.md)
-* Then publish it:
-  ```bash
-  ./earthly \
-    --push \
-    ./release+release-vscode-syntax-highlighting \
-    --VSCODE_RELEASE_TAG="$VSCODE_RELEASE_TAG"
-  ```
-* Finally, tag git for future reference
-  ```bash
-  git tag "vscode-syntax-highlighting-$VSCODE_RELEASE_TAG"
-  git push origin "vscode-syntax-highlighting-$VSCODE_RELEASE_TAG"
-  ```
+We currently have syntax highlighting for the following:
+1. [vscode + github](https://github.com/earthly/earthfile-grammar)
+1. [intellij](https://github.com/earthly/earthly-intellij-plugin) (py, go, java)
+1. [vim](https://github.com/earthly/earthly.vim)
+1. [sublime](https://github.com/earthly/sublimetext-earthly-syntax)
+1. [emacs](https://github.com/earthly/earthly-emacs)
 
-(If `VSCE_TOKEN` token has expired, Vlad can regenerate one following [this guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token) and then setting it using `./earthly secrets set /earthly-technologies/vsce/token '...'`)
 
-(If `OVSX_TOKEN` token has expired, Nacho can regenerate one following [this guide](https://github.com/eclipse/openvsx/wiki/Publishing-Extensions#3-create-an-access-token) and then setting it using `./earthly secrets set /earthly-technologies/ovsx/token '...'`)
+#### VSCode + Github
+
+1. Go to the [repo](https://github.com/earthly/earthfile-grammar)
+1. Make relevant changes + test
+1. Set the version to publish:
+    ```bash
+    export VSCODE_RELEASE_TAG=${NEW_VERSION_HERE}
+    ```
+    
+    You can [see what is already published](https://marketplace.visualstudio.com/items?itemName=earthly.earthfile-syntax-highlighting)
+1. Make sure that the version has release notes already in the [README](https://github.com/earthly/earthfile-grammar/CHANGELOG.md)
+1. 
+    ```bash
+    earthly --release \
+      --build-arg VSCODE_RELEASE_TAG=${VSCODE_RELEASE_TAG}
+    ```
+1. Finally, tag git for future reference
+    ```bash
+    git tag "vscode-syntax-highlighting-$VSCODE_RELEASE_TAG"
+    git push origin "vscode-syntax-highlighting-$VSCODE_RELEASE_TAG"
+    ```
+
+- If `VSCE_TOKEN` token has expired, Vlad can regenerate one following [this guide](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token) and then setting it using `./earthly secrets set /earthly-technologies/vsce/token '...'`
+
+- If `OVSX_TOKEN` token has expired, Nacho can regenerate one following [this guide](https://github.com/eclipse/openvsx/wiki/Publishing-Extensions#3-create-an-access-token) and then setting it using `./earthly secrets set /earthly-technologies/ovsx/token '...'`
+
+#### Intellij
+
+Intellij pulls its syntax highlighting from the [same repo used by VSCODE + Github](https://github.com/earthly/earthfile-grammar) and so should be released after to keep up to date.
+
+1. Go to the [repo](https://github.com/earthly/earthfile-grammar)
+1. Make relevant changes to the branches + test in this order:
+    1. py 
+    1. go
+    1. main
+1. Sign + release the changes from each branch in this order:
+    1. py 
+    1. go
+    1. main
+
+    Follow the instructions on how to sign and release as written in the [README](https://github.com/earthly/earthly-intellij-plugin#signing-requires-earthly-technologies-org-membership)
+
+#### Vim
+
+1. Go to the [repo](https://github.com/earthly/earthly.vim)
+1. Make relevant updates and test
+1. Once merged to main it will be released
+
+#### Sublime Text
+
+1. Go to the [repo](https://github.com/earthly/sublimetext-earthly-syntax)
+1. Make relevant updates and test
+1. Once merged to main it will be released
+
+#### Emacs
+
+1. Go to the [repo](https://github.com/earthly/earthly-emacs)
+1. Make relevant updates and test
+1. Once merged to main it will be released

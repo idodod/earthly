@@ -13,6 +13,12 @@ Examples of integrating Earthly into various CI systems can be found on the foll
 
 For more general information on CI systems not listed above, see the [CI integration guide](../ci-integration/overview.md).
 
+## Examples by dev environments
+
+Examples of how Earthly can be integrated into different dev environments
+
+* [GitHub Codespaces](https://github.com/earthly/codespaces-example) - shows how Earthly can be used in GitHub Codespaces and Devcontainers
+
 ## Example Earthfiles
 
 In this section, you will find some examples of Earthfiles to familiarize yourself with Earthly.
@@ -37,6 +43,7 @@ Please note that these examples, although similar, are distinct from the ones us
 
 <!-- vale HouseStyle.Spelling = NO -->
 * [c](https://github.com/earthly/earthly/tree/main/examples/c)
+* [clojure](https://github.com/earthly/earthly/tree/main/examples/clojure)
 * [cobol](https://github.com/earthly/earthly/tree/main/examples/cobol)
 * [cpp](https://github.com/earthly/earthly/tree/main/examples/cpp)
 * [dotnet](https://github.com/earthly/earthly/tree/main/examples/dotnet)
@@ -114,14 +121,14 @@ Here's a snip from an support request with gitbook:
 * [buildkitd/Earthfile](https://github.com/earthly/earthly/blob/main/buildkitd/Earthfile) - the build of the Buildkit daemon
 * [AST/parser/Earthfile](https://github.com/earthly/earthly/blob/main/ast/parser/Earthfile) - the build of the parser, which generates .go files
 * [tests/Earthfile](https://github.com/earthly/earthly/blob/main/tests/Earthfile) - system and smoke tests
-* [contrib/earthfile-syntax-highlighting/Earthfile](https://github.com/earthly/earthly/blob/main/contrib/earthfile-syntax-highlighting/Earthfile) - the build of the VS Code extension
+* [earthfile-grammar/Earthfile](https://github.com/earthly/earthfile-grammar/blob/main/Earthfile) - the build of the VS Code extension
 -->
 
 * [Earthfile](https://tinyurl.com/yt3d3cx6) - the root build file
 * [buildkitd/Earthfile](https://tinyurl.com/yvnpuru7) - the build of the Buildkit daemon
 * [AST/parser/Earthfile](https://tinyurl.com/2k3u4vty) - the build of the parser, which generates .go files
 * [tests/Earthfile](https://tinyurl.com/2p8ws579) - system and smoke tests
-* [contrib/earthfile-syntax-highlighting/Earthfile](https://tinyurl.com/yp4y6byn) - the build of the VS Code extension
+* [earthfile-grammar/Earthfile](https://tinyurl.com/2vyjprt6) - the build of the VS Code extension
 
 To invoke Earthly's build, check out the code and then run the following in the root of the repository
 

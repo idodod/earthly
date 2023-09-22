@@ -4,6 +4,191 @@ All notable changes to [Earthly](https://github.com/earthly/earthly) will be doc
 
 ## Unreleased
 
+## v0.7.19 - 2023-09-20
+
+### Added
+- Added "dev.earthly.*" LABELS to saved images, for example `dev.earthly.version` will be set to `v0.7.19` (or whatever version of earthly is used) [#3247](https://github.com/earthly/earthly/issues/3247).
+- Added option to verbose print known_hosts to make it easier to debug git related commands [#3234](https://github.com/earthly/earthly/issues/3234).
+
+### Fixed
+- When a project based secret is not found, the name of the secret will now be displayed along with the "not found" error.
+
+### Changed
+- Log sharing will now stream logs as your build is running (rather than uploading logs when build execution completes).
+- Satellite reserve calls will now retry on error [#3255](https://github.com/earthly/earthly/issues/3255).
+- Display warning when TLS is disabled.
+
+## v0.7.18 - 2023-09-18 (aborted release/not recommended)
+<!--changelog-parser-ignore-start-->
+Note: This release was aborted due to a regression in the log sharing functionality
+<!--changelog-parser-ignore-end-->
+
+### Added
+- Added "dev.earthly.*" LABELS to saved images, for example `dev.earthly.version` will be set to `v0.7.18` (or whatever version of earthly is used) [#3247](https://github.com/earthly/earthly/issues/3247).
+- Added option to verbose print known_hosts to make it easier to debug git related commands [#3234](https://github.com/earthly/earthly/issues/3234).
+
+### Fixed
+- When a project based secret is not found, the name of the secret will now be displayed along with the "not found" error.
+
+### Changed
+- Refactor console output code (e.g. removed redundant output, prepared code for a future streaming log uploads... coming soon).
+- Display warning when TLS is disabled.
+
+## v0.7.17 - 2023-08-30
+
+### Added
+- Added a `--pass-arg` flag that can be used with `BUILD`, `FROM`, `COPY`, `WITH DOCKER --load`, or `DO`, which will pass all build arguments to external Earthfiles. [#1891](https://github.com/earthly/earthly/issues/1891)
+
+## v0.7.16 - 2023-08-28
+
+### Fixed
+- Fixed a cgroup v2 related bug that affected systemd-based images (such as kind) from being run via `WITH DOCKER`. [#3159](https://github.com/earthly/earthly/issues/3159)
+
+### Changed
+- Removed redundant output when parts of builds are re-used; the `--verbose` flag will still display the output.
+- Calling `earthly secret set <path>` (when run interactively) will now prompt for a single-line secret if no other flags are given.
+- fixed bug in `earthly registry setup` which was waiting for an end of file (eof) rather than newline, when prompting for a password.
+
+### Added
+- Added additional error message output when buildkit scheduller errors occur (in order to help debug the ongoing [2957](https://github.com/earthly/earthly/issues/2957) issue).
+
+## v0.7.15 - 2023-08-04
+
+### Fixed
+- Fixed a bug in `WITH DOCKER` which prevented the use of newer versions of docker. [#3164](https://github.com/earthly/earthly/issues/3164)
+
+## v0.7.14 - 2023-07-31
+
+### Changed
+- Update buildkit (contains upstream changes up to 687091bb6c8aaa0185cdc570c4db3db533f329d0).
+- Use `HTTPS_PROXY` env when connecting to earhly cloud API.
+
+## v0.7.13 - 2023-07-26
+
+### Added
+- `earthly account list-tokens` now shows the last time a token was used
+- Experimental command `earthly init` to initialize an Earthfile in a project (currently supporting only golang projects)
+
+### Fixed
+- Fixed a bug, where the command to create tokens with a set expiration failed.
+- Long pauses at the end of builds, which were characterized by apparent freezes or delays with the message `Waiting on Buildkit...`. 
+- `earthly account create-token` no longer panics when parsing expiration date
+- `earthly account login` could change the active user when the JWT expired and an SSH key existed for a different user; now earthly will either refresh the JWT or error
+
+### Changed
+- Setting env vars like  `FORCE_COLOR`, or `EARTHLY_FULL_TARGET` to `0`, `false`, `FALSE`, or `` (an empty-string) will no longer force the color, use any other value like `1`, `true`, or `yesplease`.
+- `earthly org list` now shows the currently selected org
+
+## v0.7.12 - 2023-07-17
+
+### Added
+- warning if acquiring file-lock takes longer than 3 seconds.
+
+### Changed
+- improved error message when a 429 too many requests rate limit error occurs.
+- `earthly sat ls -a` shows last accessed time
+- improved output for listing auth tokens
+
+### Fixed
+- make use of org from earthly config when using satellite commands.
+
+## v0.7.12-rc1 - 2023-07-13
+
+### Added
+- warning if acquiring file-lock takes longer than 3 seconds.
+
+### Changed
+- improved error message when a 429 too many requests rate limit error occurs.
+- `earthly sat ls -a` shows last accessed time
+
+### Fixed
+- make use of org from earthly config when using satellite commands.
+
+## v0.7.11 - 2023-07-06
+
+### Added
+- `global.org` configuration value to set a default org for all `earthly` commands that require it.
+- `earthly org select` and `earthly org unselect` commands, as shortcuts to set a default organization in the `earthly` config file.
+
+### Changed
+- Removed the default size in satellite launch (the default size is now determined by the backend when not provided) [#3057](https://github.com/earthly/earthly/issues/3057)
+- Deprecated the satellite org configuration value. It uses the new global configuration value.
+
+## v0.7.10 - 2023-07-05
+
+### Changed
+- Removed the default size in satellite launch (the default size is now determined by the backend when not provided) [#3057](https://github.com/earthly/earthly/issues/3057)
+- Earthly cloud organization auto-detection has been deprecated and should now be explicitly set with the `--org` flag or with the `EARTHLY_ORG` environment variable.
+- Buildkit has been updated to include upstream changes up to cdf28d6fff9583a0b173c62ac9a28d1626599d3b.
+
+### Fixed
+- Updated the podman auth provider to better understand podman `auth.json` locations. [#3038](https://github.com/earthly/earthly/issues/3038)
+- Fixed our aggregated authprovider ignoring the cloud authprovider when a project is set after the first creds lookup [#3058](https://github.com/earthly/earthly/issues/3058)
+
+## v0.7.9 - 2023-06-22
+
+### Changed
+- The command `docker-build` now also supports passing multiple platforms using a comma (e.g `--platform linux/amd64,linux/arm64`)
+- Increased temporary lease duration of buildkit's history queue to prevent unknown history in blob errors under high cpu load. [#3000](https://github.com/earthly/earthly/issues/3000)
+- Performing an `earthly account logout` will keep you logged out -- earthly will no longer attempt an auto-login via ssh-agent (use `earthly account login` to log back in).
+
+### Fixed
+- Fixed a bug in satellite update command which was incorrectly changing satellites to medium size.
+- Fixed support for being authenticated with multiple registries when using the cloud-based `earthly registry` feature. [#3010](https://github.com/earthly/earthly/issues/3010)
+- Fixed `WITH DOCKER` auto install script when using latest (bookworm) version.
+
+### Added
+- Buildkit logs now include version and revision.
+- Satellite name autocompletion
+
+## v0.7.8 - 2023-06-07
+
+### Added
+- Add a new command `docker-build` to build a docker image using a Dockerfile without using an Earthfile, locally or on a satellite.
+
+### Changed
+- `FROM DOCKERFILE` will use a `.dockerignore` file when using a build context from the host system and both `.earthlyignore` and `.earthignore` do not exist. Enable with `VERSION --use-docker-ignore 0.7`.
+
+### Fixed
+- Fixed upstream race condition bug in buildkit, which resulted in `failed to solve: unknown blob sha256:<...> in history` errors. [#3000](https://github.com/earthly/earthly/issues/3000)
+
+## v0.7.7 - 2023-06-01
+
+### Added
+- The new ARG `EARTHLY_CI_RUNNER` indicates whether the current build is executed in Earthly CI. Enable with `VERSION --earthly-ci-runner-arg 0.7`.
+
+### Changed
+- Updated buildkit up to 60d134bf7 and fsutil up to 9e7a6df48576; this includes a buildkit fix for 401 Unauthorized errors. [#2973](https://github.com/earthly/earthly/issues/2973)
+- Enabled `GIT_LFS_SKIP_SMUDGE=1` when pulling git repos (to avoid pulling in large files initially).
+
+### Fixed
+- The earthly docker image incorrectly showed `dev-main` under the embedded buildkit version.
+
+## v0.7.6 - 2023-05-23
+
+### Added
+- Better error messages when git opperations fail.
+- Added a `runc-ps` script under the earthly-buildkitd container to make it easier to see what processes are running.
+
+### Fixed
+- The builtin 'docker compose' (rather than `docker-compose` script) is now used when using the `WITH DOCKER` command under alpine 3.18 or greater.
+- Fixed context timeout value overflow when connecting to a remote buildkit instance.
+
+## v0.7.5 - 2023-05-10
+
+### Changed
+- Remote BuildKit will use TLS by default.
+- Deprecation warning: Secret IDs naming scheme should follow the ARG naming scheme; i.e. a letter followed by alphanumeric characters or underscores. [#2883](https://github.com/earthly/earthly/issues/2883)
+- Secrets take precedence over ARGs of the same name. [#2931](https://github.com/earthly/earthly/issues/2931)
+
+### Added
+- Experimental support for performing a `git lfs pull --include=<path>` when referencing a remote target on the cli, when used with the new `--git-lfs-pull-include` flag. [#2992](https://github.com/earthly/earthly/pull/2922)
+
+### Fixed
+- `SAVE IMAGE <img>` was incorrectly pushed when earthly was run with the `--push` cli flag (this restores the requirement that images that are pushed must be defined with `SAVE IMAGE --push <img>`). [#2923](https://github.com/earthly/earthly/issues/2923)
+- Incorrect global ARG values when chaining multiple DO commands together. [#2920](https://github.com/earthly/earthly/issues/2920)
+- Build args autocompletion under artifact mode.
+
 ## v0.7.4 - 2023-04-12
 
 ### Changed

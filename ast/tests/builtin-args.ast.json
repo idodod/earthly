@@ -3,7 +3,7 @@
     {
       "command": {
         "args": [
-          "alpine:3.15"
+          "alpine:3.18"
         ],
         "name": "FROM"
       }
@@ -97,6 +97,14 @@
           "command": {
             "args": [
               "EARTHLY_LOCALLY"
+            ],
+            "name": "ARG"
+          }
+        },
+        {
+          "command": {
+            "args": [
+              "EARTHLY_CI_RUNNER"
             ],
             "name": "ARG"
           }
@@ -265,6 +273,48 @@
               "\"$EARTHLY_LOCALLY\"",
               "=",
               "\"false\""
+            ],
+            "name": "RUN"
+          }
+        },
+        {
+          "command": {
+            "args": [
+              "test",
+              "-z",
+              "\"$EARTHLY_CI_RUNNER\""
+            ],
+            "name": "RUN"
+          }
+        }
+      ]
+    },
+    {
+      "name": "earthly-ci-runner-builtin-arg-test",
+      "recipe": [
+        {
+          "command": {
+            "args": [
+              "EARTHLY_CI_RUNNER"
+            ],
+            "name": "ARG"
+          }
+        },
+        {
+          "command": {
+            "args": [
+              "EXPECTED_VALUE"
+            ],
+            "name": "ARG"
+          }
+        },
+        {
+          "command": {
+            "args": [
+              "test",
+              "\"$EARTHLY_CI_RUNNER\"",
+              "=",
+              "\"$EXPECTED_VALUE\""
             ],
             "name": "RUN"
           }

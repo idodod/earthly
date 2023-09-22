@@ -1,9 +1,27 @@
 #!/bin/sh
-
 set -eu
+
+EARTHLY_DOCKER_WRAPPER_DEBUG=${EARTHLY_DOCKER_WRAPPER_DEBUG:-''}
+if [ "$EARTHLY_DOCKER_WRAPPER_DEBUG" = "1" ]; then
+    echo "enabling docker wrapper debug mode"
+    set -x
+fi
 
 # This host is used to pull images from the embedded BuildKit Docker registry.
 buildkit_docker_registry='172.30.0.1:8371'
+
+detect_docker_compose_cmd() {
+    if command -v docker-compose >/dev/null; then
+        echo "docker-compose"
+        return 0
+    fi
+    if docker help | grep -w compose >/dev/null; then
+        echo "docker compose"
+        return 0
+    fi
+    echo >&2 "failed to detect docker compose / docker-compose command"
+    return 1
+}
 
 # Runs docker-compose with the right -f flags.
 docker_compose_cmd() {
@@ -12,8 +30,10 @@ docker_compose_cmd() {
         compose_file_flags="$compose_file_flags -f $f"
     done
     export COMPOSE_HTTP_TIMEOUT=600
+    docker_compose="$(detect_docker_compose_cmd)"
+    export COMPOSE_PROJECT_NAME="default" # newer versions of docker fail if this is not set; older versions used "default" when it was not set
     # shellcheck disable=SC2086
-    docker-compose $compose_file_flags "$@"
+    $docker_compose $compose_file_flags "$@"
 }
 
 write_compose_config() {
@@ -27,6 +47,30 @@ execute() {
         exit 1
     fi
     mkdir -p "$EARTHLY_DOCKERD_DATA_ROOT"
+
+    if [ -f "/sys/fs/cgroup/cgroup.controllers" ]; then
+        if [ "$EARTHLY_DOCKER_WRAPPER_DEBUG" = "1" ]; then
+            echo >&2 "detected cgroups v2"
+        fi
+
+        # move script to separate cgroup, to prevent the root cgroup from becoming threaded (which will prevent systemd images (e.g. kind) from running)
+        mkdir /sys/fs/cgroup/dockerd-wrapper
+        echo $$ > /sys/fs/cgroup/dockerd-wrapper/cgroup.procs
+
+       # earthly wraps dockerd-wrapper.sh with a call via /bin/sh -c '....'
+       # so we also need to move the parent pid into this new group, which is weird
+       # TODO: we should unwrap this so $$ is all we need to move
+        echo 1 > /sys/fs/cgroup/dockerd-wrapper/cgroup.procs
+
+        if [ "$(wc -l < /sys/fs/cgroup/cgroup.procs)" != "0" ]; then
+            echo >&2 "warning: processes exist in the root cgroup; this may cause errors during cgroup initialization"
+        fi
+
+        root_cgroup_type="$(cat /sys/fs/cgroup/cgroup.type)"
+        if [ "$root_cgroup_type" != "domain" ]; then
+            echo >&2 "WARNING: expected cgroup type of \"domain\", but got \"$root_cgroup_type\" instead"
+        fi
+    fi
 
     # Sometimes, when dockerd starts containerd, it doesn't come up in time. This timeout is not configurable from
     # dockerd, therefore we retry... since most instances of this timeout seem to be related to networking or scheduling
@@ -76,6 +120,13 @@ start_dockerd() {
     data_root=$(TMPDIR="$EARTHLY_DOCKERD_DATA_ROOT/" mktemp -d)
     echo "Starting dockerd with data root $data_root"
 
+    if uname -a | grep microsoft-standard-WSL >/dev/null; then
+        if iptables --version | grep nf_tables >/dev/null; then
+            echo "WARNING: WSL and iptables-nft may not work; attempting to switch to iptables-legacy"
+            ln -sf "/sbin/iptables-legacy" /sbin/iptables
+        fi
+    fi
+
     # Use a specific IP range to avoid collision with host dockerd (we need to also connect to host
     # docker containers for the debugger).
     if ! [ -f /etc/docker/daemon.json ]; then
@@ -121,6 +172,7 @@ EOF
     # Start with wiping the dir to make sure a previous interrupted build did not leave its state around.
     wipe_data_root "$data_root"
     mkdir -p "$data_root"
+    rm -f /var/run/docker.pid
     dockerd >/var/log/docker.log 2>&1 &
     dockerd_pid="$!"
     i=1
@@ -233,6 +285,14 @@ load_registry_images() {
         echo "...done"
     fi
 }
+
+EARTHLY_DOCKER_WRAPPER_DEBUG_CMD=${EARTHLY_DOCKER_WRAPPER_DEBUG_CMD:-''}
+if [ -n "$EARTHLY_DOCKER_WRAPPER_DEBUG_CMD" ]; then
+    echo "Running debug command: $EARTHLY_DOCKER_WRAPPER_DEBUG_CMD"
+    eval "$EARTHLY_DOCKER_WRAPPER_DEBUG_CMD"
+    echo "debug command exited with $?; forcing exit 1 to prevent saving RUN snapshot"
+    exit 1
+fi
 
 case "$1" in
     get-compose-config)

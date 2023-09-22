@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -18,6 +19,10 @@ func (c *Client) withAuth(ctx context.Context) context.Context {
 
 func (c *Client) withReqID(ctx context.Context) context.Context {
 	return metadata.AppendToOutgoingContext(ctx, requestID, c.getRequestID())
+}
+
+func (c *Client) withRetryCount(ctx context.Context, count int) context.Context {
+	return metadata.AppendToOutgoingContext(ctx, retryCount, strconv.Itoa(count))
 }
 
 func getReqID(ctx context.Context) string {
@@ -119,7 +124,7 @@ func (c *Client) StreamInterceptor() grpc.StreamClientInterceptor {
 
 func (c *Client) reAuthIfExpired(ctx context.Context) (context.Context, error) {
 	if time.Now().UTC().After(c.authTokenExpiry) {
-		err := c.Authenticate(ctx)
+		_, err := c.Authenticate(ctx)
 		if err != nil {
 			return ctx, errors.Wrap(err, "failed refreshing expired token")
 		}
@@ -129,7 +134,7 @@ func (c *Client) reAuthIfExpired(ctx context.Context) (context.Context, error) {
 }
 
 func (c *Client) reAuthCtx(ctx context.Context) (context.Context, error) {
-	err := c.Authenticate(ctx)
+	_, err := c.Authenticate(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed re-authenticating")
 	}

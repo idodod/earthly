@@ -3,9 +3,11 @@ package cloud
 import (
 	"context"
 	"crypto/tls"
+	"sync"
 	"time"
 
 	"github.com/earthly/cloud-api/analytics"
+	"github.com/earthly/cloud-api/askv"
 	"github.com/earthly/cloud-api/compute"
 	"github.com/earthly/cloud-api/logstream"
 	"github.com/earthly/cloud-api/pipelines"
@@ -17,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -33,7 +36,12 @@ const (
 	tokenExpiryLayout    = "2006-01-02 15:04:05.999999999 -0700 MST"
 	satelliteMgmtTimeout = "5M" // 5 minute timeout when launching or deleting a Satellite
 	requestID            = "request-id"
+	retryCount           = "retry-count"
 )
+
+type logstreamClient interface {
+	StreamLogs(ctx context.Context, opts ...grpc.CallOption) (logstream.LogStream_StreamLogsClient, error)
+}
 
 type Client struct {
 	httpAddr                 string
@@ -51,12 +59,16 @@ type Client struct {
 	jum                      *protojson.UnmarshalOptions
 	pipelines                pipelines.PipelinesClient
 	compute                  compute.ComputeClient
-	logstream                logstream.LogStreamClient
+	logstream                logstreamClient
+	logstreamBackoff         time.Duration
 	analytics                analytics.AnalyticsClient
+	askv                     askv.AskvClient
 	requestID                string
 	installationName         string
 	logstreamAddressOverride string
 	serverConnTimeout        time.Duration
+	orgIDCache               sync.Map // orgName -> orgID
+	lastAuthMethod           AuthMethod
 }
 
 type ClientOpt func(*Client)
@@ -80,6 +92,7 @@ func NewClient(httpAddr, grpcAddr string, useInsecure bool, agentSockPath, authC
 		requestID:         requestID,
 		serverConnTimeout: serverConnTimeout,
 	}
+
 	if authJWTOverride != "" {
 		c.authToken = authJWTOverride
 		c.authTokenExpiry = time.Now().Add(24 * 365 * time.Hour) // Never expire when using JWT.
@@ -96,30 +109,43 @@ func NewClient(httpAddr, grpcAddr string, useInsecure bool, agentSockPath, authC
 	}
 
 	ctx := context.Background()
+
 	retryOpts := []grpc_retry.CallOption{
 		grpc_retry.WithMax(10),
 		grpc_retry.WithBackoff(grpc_retry.BackoffExponential(100 * time.Millisecond)),
 		grpc_retry.WithCodes(codes.Internal, codes.Unavailable),
 	}
+
 	dialOpts := []grpc.DialOption{
 		grpc.WithChainStreamInterceptor(grpc_retry.StreamClientInterceptor(retryOpts...), c.StreamInterceptor()),
 		grpc.WithChainUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...), c.UnaryInterceptor(WithSkipAuth("/api.public.analytics.Analytics/SendAnalytics"))),
 	}
-	var transportCredential credentials.TransportCredentials
+
+	var transportCreds credentials.TransportCredentials
 	if useInsecure {
-		transportCredential = insecure.NewCredentials()
+		transportCreds = insecure.NewCredentials()
 	} else {
-		transportCredential = credentials.NewTLS(&tls.Config{})
+		transportCreds = credentials.NewTLS(&tls.Config{})
 	}
-	dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCredential))
+
+	dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCreds))
 	conn, err := grpc.DialContext(ctx, grpcAddr, dialOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed dialing pipelines grpc")
 	}
+
 	c.pipelines = pipelines.NewPipelinesClient(conn)
 	c.compute = compute.NewComputeClient(conn)
 	c.analytics = analytics.NewAnalyticsClient(conn)
-	c.logstream, err = logstreamClient(ctx, conn, c.logstreamAddressOverride, dialOpts...)
+	c.askv = askv.NewAskvClient(conn)
+
+	logstreamAddr := grpcAddr
+	if c.logstreamAddressOverride != "" {
+		logstreamAddr = c.logstreamAddressOverride
+	}
+
+	c.logstreamBackoff = 250 * time.Millisecond
+	c.logstream, err = newLogstreamClient(ctx, logstreamAddr, transportCreds)
 	if err != nil {
 		return nil, errors.Wrap(err, "cloud: could not create logstream client")
 	}
@@ -134,13 +160,34 @@ func (c *Client) getRequestID() string {
 	return uuid.NewString()
 }
 
-func logstreamClient(ctx context.Context, defaultConn grpc.ClientConnInterface, overrideAddr string, dialOpts ...grpc.DialOption) (logstream.LogStreamClient, error) {
-	if overrideAddr == "" {
-		return logstream.NewLogStreamClient(defaultConn), nil
+var serviceConfig = `{
+	"methodConfig": [{
+		"name": [{"service": "` + logstream.LogStream_ServiceDesc.ServiceName + `"}],
+		"waitForReady": true,
+		"retryPolicy": {
+			"MaxAttempts": 10,
+			"InitialBackoff": ".5s",
+			"MaxBackoff": "10s",
+			"BackoffMultiplier": 1.5,
+			"RetryableStatusCodes": [ "UNAVAILABLE", "UNKNOWN" ]
+		}
+	}]
+}`
+
+func newLogstreamClient(ctx context.Context, addr string, transportCreds credentials.TransportCredentials) (logstream.LogStreamClient, error) {
+
+	// Use custom dial options for log streaming as it uses long-lived,
+	// sometimes idle, connections.
+	dialOpts := []grpc.DialOption{
+		grpc.WithDefaultServiceConfig(serviceConfig),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{Time: 10 * time.Second}),
+		grpc.WithTransportCredentials(transportCreds),
 	}
-	conn, err := grpc.DialContext(ctx, overrideAddr, dialOpts...)
+
+	conn, err := grpc.DialContext(ctx, addr, dialOpts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "cloud: failed dialing logstream grpc")
 	}
+
 	return logstream.NewLogStreamClient(conn), nil
 }

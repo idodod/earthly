@@ -2,14 +2,15 @@ package buildkitd
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/containerd/containerd/platforms"
@@ -21,9 +22,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/earthly/earthly/ast/hint"
 	"github.com/earthly/earthly/conslogging"
 	"github.com/earthly/earthly/util/buildkitutil"
-	"github.com/earthly/earthly/util/cliutil"
 	"github.com/earthly/earthly/util/containerutil"
 	"github.com/earthly/earthly/util/fileutil"
 	"github.com/earthly/earthly/util/semverutil"
@@ -39,8 +40,41 @@ var (
 
 // NewClient returns a new buildkitd client. If the buildkitd daemon is local, this function
 // might start one up, if not already started.
-func NewClient(ctx context.Context, console conslogging.ConsoleLogger, image, containerName, installationName string, fe containerutil.ContainerFrontend, earthlyVersion string, settings Settings, opts ...client.ClientOpt) (*client.Client, error) {
-	opts, err := addRequiredOpts(settings, installationName, opts...)
+func NewClient(ctx context.Context, console conslogging.ConsoleLogger, image, containerName, installationName string, fe containerutil.ContainerFrontend, earthlyVersion string, settings Settings, opts ...client.ClientOpt) (_ *client.Client, retErr error) {
+	defer func() {
+		if retErr == nil {
+			return
+		}
+		if errors.Is(retErr, os.ErrNotExist) {
+			switch fe.Config().Setting {
+			case containerutil.FrontendPodman, containerutil.FrontendPodmanShell:
+				tlsPaths := []string{
+					settings.TLSCA,
+					settings.ServerTLSKey,
+					settings.ServerTLSCert,
+					settings.ClientTLSKey,
+					settings.ClientTLSCert,
+				}
+				if containsAny(retErr.Error(), tlsPaths...) {
+					retErr = hint.Wrap(retErr,
+						"podman now requires TLS certs by default - try stopping the earthly-buildkitd container and re-running 'earthly bootstrap'",
+						"alternatively, run 'earthly config global.tls_enabled false' to disable TLS",
+					)
+				}
+			default:
+			}
+			return
+		}
+		if strings.Contains(retErr.Error(), rsa.ErrVerification.Error()) {
+			// verification errors can happen server-side, which means
+			// errors.Is() won't work. We use strings.Contains instead to handle
+			// that case.
+			retErr = hint.Wrap(retErr, "did earthly's certificates get regenerated? you may need to manually stop the earthly-buildkitd container.")
+			return
+		}
+	}()
+
+	opts, err := addRequiredOpts(settings, installationName, fe.Config().Setting == containerutil.FrontendPodmanShell, opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "add required client opts")
 	}
@@ -75,7 +109,7 @@ func NewClient(ctx context.Context, console conslogging.ConsoleLogger, image, co
 		bkCons.Printf("Is %[1]s installed and running? Are you part of any needed groups?\n", fe.Config().Binary)
 		return nil, fmt.Errorf("%s not available", fe.Config().Binary)
 	}
-	info, workerInfo, err := MaybeStart(ctx, console, image, containerName, installationName, fe, settings, opts...)
+	info, workerInfo, err := maybeStart(ctx, console, image, containerName, installationName, fe, settings, opts...)
 	if err != nil {
 		return nil, errors.Wrap(err, "maybe start buildkitd")
 	}
@@ -94,7 +128,7 @@ func ResetCache(ctx context.Context, console conslogging.ConsoleLogger, image, c
 		return errors.New("cannot reset cache of a provided buildkit-host setting")
 	}
 
-	opts, err := addRequiredOpts(settings, installationName, opts...)
+	opts, err := addRequiredOpts(settings, installationName, fe.Config().Setting == containerutil.FrontendPodmanShell, opts...)
 	if err != nil {
 		return errors.Wrap(err, "add required client opts")
 	}
@@ -135,17 +169,25 @@ func ResetCache(ctx context.Context, console conslogging.ConsoleLogger, image, c
 	return nil
 }
 
-// MaybeStart ensures that the buildkitd daemon is started. It returns the URL
+// maybeStart ensures that the buildkitd daemon is started. It returns the URL
 // that can be used to connect to it.
-func MaybeStart(ctx context.Context, console conslogging.ConsoleLogger, image, containerName, installationName string, fe containerutil.ContainerFrontend, settings Settings, opts ...client.ClientOpt) (cinfo *client.Info, winfo *client.WorkerInfo, finalErr error) {
+func maybeStart(ctx context.Context, console conslogging.ConsoleLogger, image, containerName, installationName string, fe containerutil.ContainerFrontend, settings Settings, opts ...client.ClientOpt) (cinfo *client.Info, winfo *client.WorkerInfo, finalErr error) {
 	if settings.StartUpLockPath != "" {
+		var tryLockDone atomic.Bool
+		go func() {
+			time.Sleep(3 * time.Second)
+			if !tryLockDone.Load() {
+				console.Warnf("waiting on other instance of earthly to start buildkitd (as indicated by %q existing)", settings.StartUpLockPath)
+			}
+		}()
 		startLock := flock.New(settings.StartUpLockPath)
 		timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer cancel()
 		_, err := startLock.TryLockContext(timeoutCtx, 200*time.Millisecond)
+		tryLockDone.Store(true)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
-				return nil, nil, errors.Errorf("timeout waiting for other process to start buildkitd")
+				return nil, nil, errors.Errorf("timeout waiting for other instance of earthly to start buildkitd")
 			}
 			return nil, nil, errors.Wrapf(err, "try flock context %s", settings.StartUpLockPath)
 		}
@@ -168,7 +210,7 @@ func MaybeStart(ctx context.Context, console conslogging.ConsoleLogger, image, c
 		console.
 			WithPrefix("buildkitd").
 			Printf("Found buildkit daemon as %s container (%s)\n", fe.Config().Binary, containerName)
-		info, workerInfo, err := MaybeRestart(ctx, console, image, containerName, installationName, fe, settings, opts...)
+		info, workerInfo, err := maybeRestart(ctx, console, image, containerName, installationName, fe, settings, opts...)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "maybe restart")
 		}
@@ -191,14 +233,14 @@ func MaybeStart(ctx context.Context, console conslogging.ConsoleLogger, image, c
 	return info, workerInfo, nil
 }
 
-// MaybeRestart checks whether the there is a different buildkitd image available locally or if
+// maybeRestart checks whether the there is a different buildkitd image available locally or if
 // settings of the current container are different from the provided settings. In either case,
 // the container is restarted.
-func MaybeRestart(ctx context.Context, console conslogging.ConsoleLogger, image, containerName, installationName string, fe containerutil.ContainerFrontend, settings Settings, opts ...client.ClientOpt) (*client.Info, *client.WorkerInfo, error) {
+func maybeRestart(ctx context.Context, console conslogging.ConsoleLogger, image, containerName, installationName string, fe containerutil.ContainerFrontend, settings Settings, opts ...client.ClientOpt) (*client.Info, *client.WorkerInfo, error) {
 	bkCons := console.WithPrefix("buildkitd")
 	containerImageID, err := GetContainerImageID(ctx, containerName, fe)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "could not get container image ID")
 	}
 	availableImageID, err := GetAvailableImageID(ctx, image, fe)
 	if err != nil {
@@ -212,7 +254,7 @@ func MaybeRestart(ctx context.Context, console conslogging.ConsoleLogger, image,
 		// Images are the same. Check settings hash.
 		hash, err := GetSettingsHash(ctx, containerName, fe)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "could not get settings hash")
 		}
 		ok, err := settings.VerifyHash(hash)
 		if err != nil {
@@ -223,7 +265,7 @@ func MaybeRestart(ctx context.Context, console conslogging.ConsoleLogger, image,
 			bkCons.VerbosePrintf("Settings hashes match (%q), no restart required\n", hash)
 			info, workerInfo, err := checkConnection(ctx, settings.BuildkitAddress, 5*time.Second, opts...)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, errors.Wrap(err, "could not connect to buildkitd to shut down container")
 			}
 			return info, workerInfo, nil
 		}
@@ -233,7 +275,7 @@ func MaybeRestart(ctx context.Context, console conslogging.ConsoleLogger, image,
 			bkCons.Printf("Updated image available. But update was inhibited.\n")
 			info, workerInfo, err := checkConnection(ctx, settings.BuildkitAddress, 5*time.Second, opts...)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, errors.Wrap(err, "could not verify connection to buildkitd container")
 			}
 			return info, workerInfo, nil
 		}
@@ -243,19 +285,19 @@ func MaybeRestart(ctx context.Context, console conslogging.ConsoleLogger, image,
 	// Replace.
 	err = Stop(ctx, containerName, fe)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "could not shut down container %q", containerName)
 	}
 	err = WaitUntilStopped(ctx, containerName, settings.Timeout, fe)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "could not wait for container %q to stop", containerName)
 	}
 	err = Start(ctx, console, image, containerName, installationName, fe, settings, false)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "could not start container %q", containerName)
 	}
 	info, workerInfo, err := WaitUntilStarted(ctx, console, containerName, settings.VolumeName, settings.BuildkitAddress, settings.Timeout, fe, opts...)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "could not wait for container %q to start", containerName)
 	}
 	bkCons.Printf("...Done\n")
 	return info, workerInfo, nil
@@ -357,7 +399,7 @@ func Start(ctx context.Context, console conslogging.ConsoleLogger, image, contai
 
 		bkURL, err := url.Parse(settings.BuildkitAddress)
 		if err != nil {
-			panic("Buildkit address was not a URL when attempting to start buildkit")
+			return errors.Wrap(err, "error parsing buildkit address url")
 		}
 		if settings.UseTCP {
 			hostPort, err := strconv.Atoi(bkURL.Port())
@@ -380,39 +422,36 @@ func Start(ctx context.Context, console conslogging.ConsoleLogger, image, contai
 			}
 			if settings.UseTLS {
 				if settings.TLSCA != "" {
-					caPath, err := makeTLSPath(settings.TLSCA, installationName)
-					if err != nil {
-						return errors.Wrap(err, "start buildkitd")
+					if exists, _ := fileutil.FileExists(settings.TLSCA); !exists {
+						return errors.Wrapf(os.ErrNotExist, "TLS CA file %q is missing", settings.TLSCA)
 					}
 					volumeOpts = append(volumeOpts, containerutil.Mount{
 						Type:     containerutil.MountBind,
-						Source:   caPath,
+						Source:   settings.TLSCA,
 						Dest:     "/etc/ca.pem",
 						ReadOnly: true,
 					})
 				}
 
 				if settings.ServerTLSCert != "" {
-					certPath, err := makeTLSPath(settings.ServerTLSCert, installationName)
-					if err != nil {
-						return errors.Wrap(err, "start buildkitd")
+					if exists, _ := fileutil.FileExists(settings.ServerTLSCert); !exists {
+						return errors.Wrapf(os.ErrNotExist, "TLS certificate %q is missing", settings.ServerTLSCert)
 					}
 					volumeOpts = append(volumeOpts, containerutil.Mount{
 						Type:     containerutil.MountBind,
-						Source:   certPath,
+						Source:   settings.ServerTLSCert,
 						Dest:     "/etc/cert.pem",
 						ReadOnly: true,
 					})
 				}
 
 				if settings.ServerTLSKey != "" {
-					keyPath, err := makeTLSPath(settings.ServerTLSKey, installationName)
-					if err != nil {
-						return errors.Wrap(err, "start buildkitd")
+					if exists, _ := fileutil.FileExists(settings.ServerTLSKey); !exists {
+						return errors.Wrapf(os.ErrNotExist, "TLS private key %q is missing", settings.ServerTLSKey)
 					}
 					volumeOpts = append(volumeOpts, containerutil.Mount{
 						Type:     containerutil.MountBind,
-						Source:   keyPath,
+						Source:   settings.ServerTLSKey,
 						Dest:     "/etc/key.pem",
 						ReadOnly: true,
 					})
@@ -574,6 +613,10 @@ func waitForConnection(ctx context.Context, containerName, address string, opTim
 			if err != nil {
 				// Try again.
 				attemptTimeout *= 2
+				// keep timeout reasonable
+				if attemptTimeout > opTimeout {
+					attemptTimeout = opTimeout
+				}
 				continue
 			}
 			return info, workerInfo, nil
@@ -887,11 +930,6 @@ func printBuildkitInfo(bkCons conslogging.ConsoleLogger, info *client.Info, work
 		default:
 		}
 	}
-	if workerInfo.GCAnalytics.AllTimeMaxDuration > 5*time.Minute {
-		bkCons.Warnf(
-			"Warning: Some GC runs are very slow, max duration %v",
-			workerInfo.GCAnalytics.AllTimeMaxDuration.Round(time.Second))
-	}
 }
 
 // getCacheSize returns the size of the earthly cache in bytes.
@@ -904,66 +942,31 @@ func getCacheSize(ctx context.Context, volumeName string, fe containerutil.Conta
 	return int(infos[volumeName].SizeBytes), nil
 }
 
-func makeTLSPath(path string, installationName string) (string, error) {
-	fullPath := path
-
-	if !filepath.IsAbs(path) {
-		earthlyDir, err := cliutil.GetOrCreateEarthlyDir(installationName)
-		if err != nil {
-			return "", err
-		}
-
-		fullPath = filepath.Join(earthlyDir, path)
-	}
-
-	exists, err := fileutil.FileExists(fullPath)
+func addRequiredOpts(settings Settings, installationName string, isUsingPodman bool, opts ...client.ClientOpt) ([]client.ClientOpt, error) {
+	server, err := url.Parse(settings.BuildkitAddress)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to check if %s exists", fullPath)
-	}
-	if !exists {
-		return "", fmt.Errorf("path '%s' does not exist", path)
+		return []client.ClientOpt{}, errors.Wrapf(err, "failed to parse buildkit url %s", settings.BuildkitAddress)
 	}
 
-	return fullPath, nil
-}
-
-func addRequiredOpts(settings Settings, installationName string, opts ...client.ClientOpt) ([]client.ClientOpt, error) {
 	if settings.SatelliteName != "" {
-		return append(opts, client.WithAdditionalMetadataContext(
+		opts = append(opts, client.WithAdditionalMetadataContext(
 			"satellite_name", settings.SatelliteName,
 			"satellite_org", settings.SatelliteOrgID,
 			"satellite_token", settings.SatelliteToken),
-			client.WithServerConfigSystem(""), // force buildkit to use a TLS connection (using system CAs)
-		), nil
+		)
 	}
 
 	if !settings.UseTCP || !settings.UseTLS {
 		return opts, nil
 	}
 
-	server, err := url.Parse(settings.BuildkitAddress)
-	if err != nil {
-		return []client.ClientOpt{}, errors.Wrap(err, "invalid buildkit url")
-	}
-
-	caPath, err := makeTLSPath(settings.TLSCA, installationName)
-	if err != nil {
-		return []client.ClientOpt{}, errors.Wrap(err, "caPath")
-	}
-
-	certPath, err := makeTLSPath(settings.ClientTLSCert, installationName)
-	if err != nil {
-		return []client.ClientOpt{}, errors.Wrap(err, "certPath")
-	}
-
-	keyPath, err := makeTLSPath(settings.ClientTLSKey, installationName)
-	if err != nil {
-		return []client.ClientOpt{}, errors.Wrap(err, "keyPath")
+	if settings.TLSCA == "" && settings.ClientTLSCert == "" && settings.ClientTLSKey == "" {
+		return append(opts, client.WithServerConfigSystem("")), nil
 	}
 
 	opts = append(opts,
-		client.WithCredentials(certPath, keyPath),
-		client.WithServerConfig(server.Hostname(), caPath),
+		client.WithCredentials(settings.ClientTLSCert, settings.ClientTLSKey),
+		client.WithServerConfig(server.Hostname(), settings.TLSCA),
 	)
 
 	return opts, nil
@@ -973,7 +976,7 @@ func addRequiredOpts(settings Settings, installationName string, opts ...client.
 // including its Buildkit version, current workload, and garbage collection.
 func PrintSatelliteInfo(ctx context.Context, console conslogging.ConsoleLogger, earthlyVersion string, settings Settings, installationName string) error {
 	console.Printf("Connecting to %s...", settings.SatelliteDisplayName)
-	opts, err := addRequiredOpts(settings, installationName)
+	opts, err := addRequiredOpts(settings, installationName, false)
 	if err != nil {
 		return errors.Wrap(err, "add required client opts")
 	}
@@ -983,4 +986,13 @@ func PrintSatelliteInfo(ctx context.Context, console conslogging.ConsoleLogger, 
 	}
 	printBuildkitInfo(console, info, workerInfo, earthlyVersion, false)
 	return nil
+}
+
+func containsAny(hs string, needles ...string) bool {
+	for _, n := range needles {
+		if strings.Contains(hs, n) {
+			return true
+		}
+	}
+	return false
 }

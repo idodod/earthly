@@ -15,6 +15,8 @@
 [![Docker Hub](https://img.shields.io/badge/docker%20hub-earthly-blue)](https://hub.docker.com/u/earthly)
 [![License MPL-2](https://img.shields.io/badge/license-MPL-blue.svg)](./LICENSE)
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=246903803)
+
 **🔁 Repeatable Builds** - *Write builds once, and run them anywhere – on your laptop, remote, and in any CI.*
 
 **❤️ Super Simple** - *Instantly recognizable syntax – like Dockerfile and Makefile had a baby.*
@@ -91,7 +93,7 @@ Never have to write the same code in multiple builds again. With Earthly, you ca
 
 <div align="center"><img src="docs/img/integration-diagram-v2.png" alt="Earthly fits between language-specific tooling and the CI" width="700px" /></div>
 
-Earthly is meant to be used both on your development machine and in CI. It runs on top of the CI/CD platform [Earthly CI](https://earthly.dev/product/earthly-ci), and it can also run on top of other popular CI systems too (such as [Jenkins](https://docs.earthly.dev/ci-integration/vendor-specific-guides/jenkins), [Circle CI](https://docs.earthly.dev/examples/circle-integration), [GitHub Actions](https://docs.earthly.dev/examples/gh-actions-integration), and [GitLab CI/CD](https://docs.earthly.dev/ci-integration/vendor-specific-guides/gitlab-integration)). Earthly provides the benefits of a modern build automation system wherever it runs – such as caching and parallelism. It is a glue layer between language-specific build tooling (like maven, gradle, npm, pip, go build) and CI, working like a wrapper around your build tooling and build logic that isolates build execution from the environments they run in.
+Earthly is meant to be used both on your development machine and in CI. It runs on top of your CI/CD platform (such as [Jenkins](https://docs.earthly.dev/ci-integration/vendor-specific-guides/jenkins), [Circle CI](https://docs.earthly.dev/examples/circle-integration), [GitHub Actions](https://docs.earthly.dev/examples/gh-actions-integration), and [GitLab CI/CD](https://docs.earthly.dev/ci-integration/vendor-specific-guides/gitlab-integration)). Earthly provides the benefits of a modern build automation system wherever it runs – such as caching and parallelism. It is a glue layer between language-specific build tooling (like maven, gradle, npm, pip, go build) and CI, working like a wrapper around your build tooling and build logic that isolates build execution from the environments they run in.
 
 
 <h2 align="center">How Does It Work?</h2>
@@ -102,7 +104,7 @@ Earthly executes builds in containers, where execution is isolated. The dependen
 
 We use a target-based system to help users break up complex builds into reusable parts. Nothing is shared between targets other than clearly declared dependencies. Nothing shared means no unexpected race conditions. In fact, the build is executed in parallel whenever possible, without any need for the user to take care of any locking or unexpected environment interactions.
 
-> **ℹ️ Note**  
+> **ℹ️ Note**
 > Earthfiles might seem very similar to Dockerfile multi-stage builds. In fact, the [same technology](https://github.com/moby/buildkit) is used underneath. However, a key difference is that Earthly is designed to be a general-purpose build system, not just a Docker image specification. Read more about [how Earthly is different from Dockerfiles](#how-is-earthly-different-from-dockerfiles).
 
 
@@ -223,7 +225,7 @@ all:
         +build
 
 build:
-    FROM alpine:3.15
+    FROM alpine:3.18
     CMD ["uname", "-m"]
     SAVE IMAGE multiplatform-image
 ```
@@ -274,7 +276,7 @@ Use `+` to reference other targets and create complex build inter-dependencies.
 Examples
 
 * Same directory (same Earthfile)
-  
+
   ```earthly
   BUILD +some-target
   FROM +some-target

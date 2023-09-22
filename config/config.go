@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/earthly/earthly/util/cliutil"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -26,8 +27,11 @@ const (
 	// DefaultBuildkitMaxParallelism is the default max parallelism for buildkit workers.
 	DefaultBuildkitMaxParallelism = 20
 
-	// DefaultCA is the default path to use when looking for a CA to use for TLS
-	DefaultCA = "./certs/ca_cert.pem"
+	// DefaultCACert is the default path to use when looking for a CA cert to use for TLS.
+	DefaultCACert = "./certs/ca_cert.pem"
+
+	// DefaultCAKey is the default path to use when looking for a CA key to use for TLS cert generation.
+	DefaultCAKey = "./certs/ca_key.pem"
 
 	// DefaultClientTLSCert is the default path to use when looking for the Earthly TLS cert
 	DefaultClientTLSCert = "./certs/earthly_cert.pem"
@@ -68,17 +72,19 @@ type GlobalConfig struct {
 	CniMtu                     uint16   `yaml:"cni_mtu"                        help:"Override auto-detection of the default interface MTU, for all containers within buildkit"`
 	BuildkitHost               string   `yaml:"buildkit_host"                  help:"The URL of your buildkit, remote or local."`
 	LocalRegistryHost          string   `yaml:"local_registry_host"            help:"The URL of the local registry used for image exports to Docker."`
-	TLSCA                      string   `yaml:"tlsca"                          help:"The path to the CA cert for verification. Relative paths are interpreted as relative to ~/.earthly."`
-	ClientTLSCert              string   `yaml:"tlscert"                        help:"The path to the client cert for verification. Relative paths are interpreted as relative to ~/.earthly."`
-	ClientTLSKey               string   `yaml:"tlskey"                         help:"The path to the client key for verification. Relative paths are interpreted as relative to ~/.earthly."`
-	ServerTLSCert              string   `yaml:"buildkitd_tlscert"              help:"The path to the server cert for verification. Relative paths are interpreted as relative to ~/.earthly. Only used when Earthly manages buildkit."`
-	ServerTLSKey               string   `yaml:"buildkitd_tlskey"               help:"The path to the server key for verification. Relative paths are interpreted as relative to ~/.earthly. Only used when Earthly manages buildkit."`
+	TLSCACert                  string   `yaml:"tlsca"                          help:"The path to the CA cert for verification. Relative paths are interpreted as relative to the config path."`
+	TLSCAKey                   string   `yaml:"tlsca_key"                      help:"The path to the CA key for generating any missing certificates. Relative paths are interpreted as relative to the config path."`
+	ClientTLSCert              string   `yaml:"tlscert"                        help:"The path to the client cert for verification. Relative paths are interpreted as relative to the config path."`
+	ClientTLSKey               string   `yaml:"tlskey"                         help:"The path to the client key for verification. Relative paths are interpreted as relative to the config path."`
+	ServerTLSCert              string   `yaml:"buildkitd_tlscert"              help:"The path to the server cert for verification. Relative paths are interpreted as relative to the config path. Only used when Earthly manages buildkit."`
+	ServerTLSKey               string   `yaml:"buildkitd_tlskey"               help:"The path to the server key for verification. Relative paths are interpreted as relative to the config path. Only used when Earthly manages buildkit."`
 	TLSEnabled                 bool     `yaml:"tls_enabled"                    help:"If TLS should be used to communicate with Buildkit. Only honored when BuildkitScheme is 'tcp'."`
 	ContainerFrontend          string   `yaml:"container_frontend"             help:"What program should be used to start and stop buildkitd, save images. Default is 'docker'. Valid options are 'docker' and 'podman' (experimental)."`
 	IPTables                   string   `yaml:"ip_tables"                      help:"Which iptables binary to use. Valid values are iptables-legacy or iptables-nft. Bypasses any autodetection."`
 	DisableLogSharing          bool     `yaml:"disable_log_sharing"            help:"Disable cloud log sharing when logged in with an Earthly account, see https://ci.earthly.dev for details."`
 	SecretProvider             string   `yaml:"secret_provider"                help:"Command to execute to retrieve secret."`
 	GitImage                   string   `yaml:"git_image"                      help:"Image used to resolve git repositories"`
+	Org                        string   `yaml:"org"                            help:"The currently selected argument. Overridden by the EARTHLY_ORG environment variable, or the CLI --org options, in that order."`
 
 	// Obsolete.
 	CachePath      string `yaml:"cache_path"         help:" *Deprecated* The path to keep Earthly's cache."`
@@ -94,7 +100,7 @@ type GitConfig struct {
 	Auth                  string `yaml:"auth"                         help:"What authentication method do you use? Valid options are: http, https, ssh."` // http, https, ssh
 	User                  string `yaml:"user"                         help:"The username to use when auth is set to git or https."`
 	Port                  int    `yaml:"port"                         help:"The port to connect to when using git; has no effect for http(s)."`
-	Prefix                string `yaml:"prefix"                  help:"This path is prefixed to the git clone url, e.g. ssh://user@host:port/prefix/project/repo.git"`
+	Prefix                string `yaml:"prefix"                       help:"This path is prefixed to the git clone url, e.g. ssh://user@host:port/prefix/project/repo.git"`
 	Password              string `yaml:"password"                     help:"The https password to use when auth is set to https. This setting is ignored when auth is ssh."`
 	ServerKey             string `yaml:"serverkey"                    help:"SSH fingerprints, like you would add in your known hosts file, or get from ssh-keyscan."`
 	StrictHostKeyChecking *bool  `yaml:"strict_host_key_checking"     help:"Allow ssh access to hosts with unknown server keys (e.g. no entries in known_hosts), defaults to true."`
@@ -103,7 +109,7 @@ type GitConfig struct {
 // Satellite contains satellite config values
 type Satellite struct {
 	Name string `yaml:"name" help:"The name of the satellite to use"`
-	Org  string `yaml:"org"  help:"The org name to whom the satellite belongs"`
+	Org  string `yaml:"org"  help:"*Deprecated* The org name to whom the satellite belongs"`
 }
 
 // Config contains user's configuration values from ~/earthly/config.yml
@@ -122,8 +128,8 @@ func PortOffset(installationName string) int {
 	return 10 + int(crc32.ChecksumIEEE([]byte(installationName)))%1000
 }
 
-// ParseConfigFile parse config data
-func ParseConfigFile(yamlData []byte, installationName string) (*Config, error) {
+// ParseYAML parse config data in yaml format.
+func ParseYAML(yamlData []byte, installationName string) (Config, error) {
 	defaultLocalRegistryPort := DefaultLocalRegistryPort + PortOffset(installationName)
 	// prepopulate defaults
 	config := Config{
@@ -136,7 +142,9 @@ func ParseConfigFile(yamlData []byte, installationName string) (*Config, error) 
 			ConversionParallelism:   DefaultConversionParallelism,
 			BuildkitMaxParallelism:  DefaultBuildkitMaxParallelism,
 			BuildkitAdditionalArgs:  []string{},
-			TLSCA:                   DefaultCA,
+			TLSEnabled:              true,
+			TLSCAKey:                DefaultCAKey,
+			TLSCACert:               DefaultCACert,
 			ClientTLSCert:           DefaultClientTLSCert,
 			ClientTLSKey:            DefaultClientTLSKey,
 			ServerTLSCert:           DefaultServerTLSCert,
@@ -145,12 +153,19 @@ func ParseConfigFile(yamlData []byte, installationName string) (*Config, error) 
 		},
 	}
 
-	err := yaml.Unmarshal(yamlData, &config)
-	if err != nil {
-		return nil, err
+	if err := yaml.Unmarshal(yamlData, &config); err != nil {
+		return Config{}, errors.Wrap(err, "failed to parse YAML config")
 	}
 
-	return &config, nil
+	if config.Git == nil {
+		config.Git = make(map[string]GitConfig)
+	}
+
+	if err := parseRelPaths(installationName, &config); err != nil {
+		return Config{}, errors.Wrap(err, "failed to parse relative path")
+	}
+
+	return config, nil
 }
 
 func keyAndValueCompatible(key reflect.Type, value *yaml.Node) bool {
@@ -475,4 +490,54 @@ func WriteConfigFile(configPath string, data []byte) error {
 	}
 
 	return os.WriteFile(configPath, data, 0644)
+}
+
+func parseRelPaths(instName string, cfg *Config) error {
+	if err := parseTLSPaths(instName, cfg); err != nil {
+		return errors.Wrap(err, "could not parse relative TLS paths")
+	}
+	return nil
+}
+
+func parseTLSPaths(instName string, cfg *Config) error {
+	if !cfg.Global.TLSEnabled {
+		return nil
+	}
+	fields := map[string]*string{
+		"ca key":      &cfg.Global.TLSCAKey,
+		"ca cert":     &cfg.Global.TLSCACert,
+		"client key":  &cfg.Global.ClientTLSKey,
+		"client cert": &cfg.Global.ClientTLSCert,
+		"server key":  &cfg.Global.ServerTLSKey,
+		"server cert": &cfg.Global.ServerTLSCert,
+	}
+	for name, field := range fields {
+		if err := parsePath(instName, field); err != nil {
+			return errors.Wrapf(err, "could not parse %v path %q", name, *field)
+		}
+	}
+	return nil
+}
+
+func parsePath(instName string, field *string) error {
+	if field == nil {
+		return errors.New("cannot parse nil field")
+	}
+	newPath, err := cfgPath(instName, *field)
+	if err != nil {
+		return err
+	}
+	*field = newPath
+	return nil
+}
+
+func cfgPath(instName, path string) (string, error) {
+	if filepath.IsAbs(path) {
+		return path, nil
+	}
+	cfgDir, err := cliutil.GetOrCreateEarthlyDir(instName)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cfgDir, path), nil
 }

@@ -23,23 +23,30 @@ import (
 // Credentials may be either email/password, ssh-based, or a custom token.
 // Upon successful authenticate, the JWT provided by the server is stored in
 // ~/.earthly/auth.jwt, and can be refreshed any time via another call to Authenticate().
-func (c *Client) Authenticate(ctx context.Context) error {
-	var err error
-	switch {
-	case c.email != "" && c.password != "":
-		err = c.loginWithPassword(ctx)
-	case c.authCredToken != "":
-		err = c.loginWithToken(ctx)
-	default:
-		err = c.loginWithSSH(ctx)
-	}
+func (c *Client) Authenticate(ctx context.Context) (AuthMethod, error) {
+	authMethod, err := c.doLogin(ctx)
 	if err != nil {
 		if errors.Is(err, ErrNoAuthorizedPublicKeys) || errors.Is(err, ErrNoSSHAgent) {
-			return ErrUnauthorized
+			return "", ErrUnauthorized
 		}
-		return err
+		return "", err
 	}
-	return c.saveToken()
+	err = c.saveToken()
+	if err != nil {
+		return "", err
+	}
+	c.lastAuthMethod = authMethod
+	return authMethod, nil
+}
+
+func (c *Client) doLogin(ctx context.Context) (AuthMethod, error) {
+	if c.email != "" && c.password != "" {
+		return AuthMethodPassword, c.loginWithPassword(ctx)
+	}
+	if c.authCredToken != "" {
+		return AuthMethodToken, c.loginWithToken(ctx)
+	}
+	return AuthMethodSSH, c.loginWithSSH(ctx)
 }
 
 func (c *Client) IsLoggedIn(ctx context.Context) bool {
@@ -81,7 +88,7 @@ func (c *Client) FindSSHCredentials(ctx context.Context, emailToFind string) err
 }
 
 func (c *Client) GetAuthToken(ctx context.Context) (string, error) {
-	err := c.Authenticate(ctx) // Ensure the current token is valid
+	_, err := c.Authenticate(ctx) // Ensure the current token is valid
 	if err != nil {
 		return "", errors.Wrap(err, "could not authenticate")
 	}
@@ -138,6 +145,59 @@ func (c *Client) DeleteAuthCache(ctx context.Context) error {
 	err = c.deleteCachedCredentials()
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (c *Client) DisableAutoLogin(ctx context.Context) error {
+	path, err := c.getDisableAutoLoginPath(true)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get disable auto login path")
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create %s", path)
+	}
+	err = f.Close()
+	if err != nil {
+		return errors.Wrapf(err, "failed to close %s", path)
+	}
+	return nil
+}
+
+func (c *Client) IsAutoLoginPermitted(ctx context.Context) (bool, error) {
+	path, err := c.getDisableAutoLoginPath(true)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to get disable auto login path")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true, nil // auto login is allowed when the file does not exist
+		}
+		return false, err
+	}
+	if info.IsDir() {
+		return false, fmt.Errorf("expected %s to be a file (not a directory)", path)
+	}
+	return false, nil
+}
+
+func (c *Client) EnableAutoLogin(ctx context.Context) error {
+	canAutoLogin, err := c.IsAutoLoginPermitted(ctx)
+	if err != nil {
+		return errors.Wrapf(err, "failed to determine if auto login is permitted")
+	}
+	if canAutoLogin {
+		return nil // already allowed
+	}
+	path, err := c.getDisableAutoLoginPath(true)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get disable auto login path")
+	}
+	err = os.Remove(path)
+	if err != nil {
+		return errors.Wrapf(err, "failed to remove %s", path)
 	}
 	return nil
 }
@@ -252,23 +312,6 @@ func (c *Client) loadToken() error {
 	return nil
 }
 
-func (c *Client) getCredentialsPath(create bool) (string, error) {
-	confDirPath := c.authDir
-	if confDirPath == "" {
-		if create {
-			var err error
-			confDirPath, err = cliutil.GetOrCreateEarthlyDir(c.installationName)
-			if err != nil {
-				return "", errors.Wrap(err, "cannot get .earthly dir")
-			}
-		} else {
-			confDirPath = cliutil.GetEarthlyDir(c.installationName)
-		}
-	}
-	credPath := filepath.Join(confDirPath, "auth.credentials")
-	return credPath, nil
-}
-
 func (c *Client) migrateOldToken() error {
 	confDirPath := c.authDir
 	if confDirPath == "" {
@@ -284,10 +327,22 @@ func (c *Client) migrateOldToken() error {
 	return nil
 }
 
+func (c *Client) getCredentialsPath(create bool) (string, error) {
+	return c.getAuthPath("auth.credentials", create)
+}
+
 func (c *Client) getTokenPath(create bool) (string, error) {
+	return c.getAuthPath("auth.jwt", create)
+}
+
+func (c *Client) getDisableAutoLoginPath(create bool) (string, error) {
+	return c.getAuthPath("do-not-login-automatically", create)
+}
+
+func (c *Client) getAuthPath(filename string, createEarthlyDir bool) (string, error) {
 	confDirPath := c.authDir
 	if confDirPath == "" {
-		if create {
+		if createEarthlyDir {
 			var err error
 			confDirPath, err = cliutil.GetOrCreateEarthlyDir(c.installationName)
 			if err != nil {
@@ -297,7 +352,7 @@ func (c *Client) getTokenPath(create bool) (string, error) {
 			confDirPath = cliutil.GetEarthlyDir(c.installationName)
 		}
 	}
-	tokenPath := filepath.Join(confDirPath, "auth.jwt")
+	tokenPath := filepath.Join(confDirPath, filename)
 	return tokenPath, nil
 }
 
@@ -402,7 +457,11 @@ func (c *Client) loginWithToken(ctx context.Context) error {
 }
 
 func (c *Client) loginWithSSH(ctx context.Context) error {
-	if c.disableSSHKeyGuessing {
+	allowAutoLogin, err := c.IsAutoLoginPermitted(ctx)
+	if err != nil {
+		return err
+	}
+	if c.disableSSHKeyGuessing || !allowAutoLogin {
 		return ErrNoAuthorizedPublicKeys
 	}
 	challenge, err := c.getChallenge(ctx)

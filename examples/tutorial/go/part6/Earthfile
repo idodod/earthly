@@ -1,5 +1,5 @@
 VERSION 0.7
-FROM golang:1.15-alpine3.13
+FROM golang:1.21-alpine3.18
 WORKDIR /go-workdir
 
 deps:
@@ -28,8 +28,8 @@ test-setup:
     ENTRYPOINT [ "go", "test", "github.com/earthly/earthly/examples/go"]
     SAVE IMAGE test:latest
 
-with-docker-example:
-    FROM earthly/dind:alpine
+integration-tests:
+    FROM earthly/dind:alpine-3.18
     COPY docker-compose.yml ./
     WITH DOCKER --compose docker-compose.yml --load tests:latest=+test-setup
         RUN docker run --network=default_go/part6_default tests:latest | grep "ok"

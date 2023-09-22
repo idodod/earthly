@@ -16,11 +16,22 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type AuthMethod string
+
+const (
+	AuthMethodSSH       AuthMethod = "ssh"
+	AuthMethodPassword  AuthMethod = "password"
+	AuthMethodToken     AuthMethod = "token"
+	AuthMethodCachedJWT AuthMethod = "cached jwt"
+)
+
 // TokenDetail contains token information
 type TokenDetail struct {
-	Name   string
-	Write  bool
-	Expiry time.Time
+	Name           string
+	Write          bool
+	Expiry         time.Time
+	Indefinite     bool
+	LastAccessedAt time.Time
 }
 
 func (c *Client) ListPublicKeys(ctx context.Context) ([]string, error) {
@@ -79,10 +90,11 @@ func (c *Client) RemovePublicKey(ctx context.Context, key string) error {
 
 func (c *Client) CreateToken(ctx context.Context, name string, write bool, expiry *time.Time) (string, error) {
 	name = url.QueryEscape(name)
-	expiryPB := timestamppb.New(expiry.UTC())
 	authToken := secretsapi.AuthToken{
-		Write:  write,
-		Expiry: expiryPB,
+		Write: write,
+	}
+	if expiry != nil {
+		authToken.Expiry = timestamppb.New(expiry.UTC())
 	}
 	status, body, err := c.doCall(ctx, "PUT", "/api/v0/account/token/"+name, withAuth(), withJSONBody(&authToken))
 	if err != nil {
@@ -119,10 +131,16 @@ func (c *Client) ListTokens(ctx context.Context) ([]*TokenDetail, error) {
 
 	tokenDetails := []*TokenDetail{}
 	for _, token := range listTokensResponse.Tokens {
+		var lastAccessedAt time.Time
+		if token.LastAccessedAt != nil {
+			lastAccessedAt = token.LastAccessedAt.AsTime()
+		}
 		tokenDetails = append(tokenDetails, &TokenDetail{
-			Name:   token.Name,
-			Write:  token.Write,
-			Expiry: token.Expiry.AsTime(),
+			Name:           token.Name,
+			Write:          token.Write,
+			Expiry:         token.Expiry.AsTime(),
+			Indefinite:     token.Indefinite,
+			LastAccessedAt: lastAccessedAt,
 		})
 	}
 	return tokenDetails, nil
@@ -144,20 +162,16 @@ func (c *Client) RemoveToken(ctx context.Context, name string) error {
 	return nil
 }
 
-func (c *Client) WhoAmI(ctx context.Context) (string, string, bool, error) {
+func (c *Client) WhoAmI(ctx context.Context) (string, AuthMethod, bool, error) {
 	email, writeAccess, err := c.ping(ctx)
 	if err != nil {
 		return "", "", false, err
 	}
-
-	authType := "ssh"
-	if c.password != "" {
-		authType = "password"
-	} else if c.authCredToken != "" {
-		authType = "token"
+	authMethod := c.lastAuthMethod
+	if authMethod == "" {
+		authMethod = AuthMethodCachedJWT
 	}
-
-	return email, authType, writeAccess, nil
+	return email, authMethod, writeAccess, nil
 }
 
 func (c *Client) GetPublicKeys(ctx context.Context) ([]*agent.Key, error) {
