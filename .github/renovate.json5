@@ -8,7 +8,7 @@
   prHourlyLimit: 1,
   prConcurrentLimit: 3,
   includePaths: [
-    'docs/**',
+    'docs/**', '.github/'
   ],
   enabledManagers: [
     'regex',
@@ -19,6 +19,7 @@
       customType: 'regex',
       fileMatch: [
         '.+\.md',
+        'renovate.json5'
       ],
       matchStrings: [
         'earthly/releases/download/(?<currentValue>.+?)/',
@@ -26,6 +27,9 @@
         '\'earthly/earthly:(?<currentValue>.+?)\'',
         'github.com/earthly/earthly:(?<currentValue>.+?)(\\+|`)',
         '(:|\\s+)earthly/earthly:(?<currentValue>.+?)[\\s\\n/]+',
+        '\* `(?<currentValue>.+?)`',
+        'allowedVersions: \'(?<currentValue>.+?)\',',
+        'matchCurrentVersion: \'(?<currentValue>.+?)\',',
       ],
       depNameTemplate: 'earthly/earthly',
       datasourceTemplate: 'github-releases',
@@ -39,6 +43,20 @@
       matchPackageNames: ['earthly/earthly'],
       matchDatasources: ['github-releases'],
       addLabels: ['earthly-version-in-docs'],
+    },
+    {
+      matchCurrentVersion: '0.7.17',
+      matchPackageNames: [
+        'earthly/earthly',
+      ],
+      matchDatasources: [
+        'github-releases',
+      ],
+      matchFileNames: [
+        'docs/**/all-in-one.md',
+        '.github/renovate.json5'
+      ],
+      allowedVersions: '<v0.7.19',
     }
   ],
 }
