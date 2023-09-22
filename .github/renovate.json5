@@ -1,0 +1,35 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    'default:pinDigestsDisabled',
+  ],
+  configMigration: true,
+  prHourlyLimit: 1,
+  schedule: [ // utc timezone
+    'after 6am on monday',
+  ],
+  includePaths: [
+    'docs/**',
+  ],
+  enabledManagers: [
+    'regex',
+  ],
+  regexManagers: [
+    {
+      // Earthly Version in md files
+      customType: 'regex',
+      fileMatch: [
+        '.+\.md',
+      ],
+      matchStrings: [
+        'earthly/releases/download/(?<currentValue>.+?)/',
+      ],
+      depNameTemplate: 'earthly/earthly',
+      datasourceTemplate: 'github-releases',
+    },
+  ],
+  labels: [
+    'renovate',
+  ],
+}
