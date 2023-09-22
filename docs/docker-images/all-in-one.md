@@ -2,7 +2,7 @@ This image contains `earthly`, `buildkit`, and some extra configuration to enabl
 
 ## Tags
 
-* `v0.7.19`, `latest`
+* `v0.7.17`, `latest`
 * `v0.7.17`
 * `v0.7.16`
 
