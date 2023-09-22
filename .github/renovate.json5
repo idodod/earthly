@@ -27,7 +27,7 @@
         '\'earthly/earthly:(?<currentValue>.+?)\'',
         'github.com/earthly/earthly:(?<currentValue>.+?)(\\+|`)',
         '(:|\\s+)earthly/earthly:(?<currentValue>.+?)[\\s\\n/]+',
-        '\* `(?<currentValue>.+?)`',
+        '\\* `(?<currentValue>.+?)`',
         'allowedVersions: \'(?<currentValue>.+?)\',',
         'matchCurrentVersion: \'(?<currentValue>.+?)\',',
       ],
