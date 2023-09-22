@@ -40,7 +40,7 @@
     {
       matchPackageNames: ['earthly/earthly'],
       matchDatasources: ['github-releases'],
-      matchFileNames': ['*.md'],
+      matchFileNames': ['docs/**.md'],
       addLabels: ['earthly-version-in-docs'],
       schedule:['hourly'],
     }
