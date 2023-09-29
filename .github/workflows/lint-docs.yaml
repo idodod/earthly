@@ -13,6 +13,8 @@ concurrency:
 jobs:
   changes:
     uses: ./.github/workflows/reuseable-find-pr-changes.yaml
+    permissions:
+      pull-requests: read
     secrets: inherit
   test:
     needs: changes
