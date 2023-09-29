@@ -11,7 +11,7 @@ is used to track each installation. This ID is randomly created and does not con
 ## Anonymized data
 
 In addition to the installation ID, earthly will also collect a one-way-hash of the
-git repository name.
+git repository name.dsfdsf
 
 ## CI platform
 
