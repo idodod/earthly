@@ -19,7 +19,7 @@ jobs:
   test:
     needs: changes
     # using "!= 'false'" so that an empty string (in case of output problem) will evaluate to true
-    if: ${{ needs.changes.outputs.essential-file != 'false' }}
+    if: ${{ needs.changes.outputs.essential-files != 'false' }}
     name: +lint-docs
     runs-on: "ubuntu-latest"
     steps:
