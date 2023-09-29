@@ -2,6 +2,10 @@ name: find pr file changes
 
 on:
   workflow_call:
+    outputs:
+      non-docs:
+        description: A boolean (as string) indicating whether essential files were changed in the PR"
+        value: ${{ jobs.file-changes.outputs.non-doc }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
