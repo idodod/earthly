@@ -3,6 +3,7 @@ name: ido-test
 on:
   pull_request:
     branches: [main]
+    paths-ignore: [ docs/** ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
