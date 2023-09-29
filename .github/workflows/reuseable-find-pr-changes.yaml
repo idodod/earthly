@@ -28,4 +28,4 @@ jobs:
           essential-file:
           # evaluate to true if at least one of the changed files is none of the following
           # (separated by "|"):
-            - '!(docs/**|*.md|**/*.md|.github/renovate.json5)'
+            - '!(docs/**/*|*.md|**/*.md|.github/renovate.json5)'
