@@ -18,7 +18,8 @@ jobs:
     secrets: inherit
   test:
     needs: changes
-    if: ${{ needs.changes.outputs.essential-file == 'true' }}
+    # using "!= 'false'" so that an empty string (in case of output problem) will evaluate to true
+    if: ${{ needs.changes.outputs.essential-file != 'false' }}
     name: +lint-docs
     runs-on: "ubuntu-latest"
     steps:
