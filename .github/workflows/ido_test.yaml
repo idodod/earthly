@@ -24,7 +24,7 @@ jobs:
       with:
         filters: |
           non-doc:
-            - '!(docs/**|*.md|**/*.md)'
+            - '!(docs/**|*.md|**/*.md|renovate.json5)'
   test:
     needs: changes
     if: ${{ needs.changes.outputs.non-doc == 'true' }}
