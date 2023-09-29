@@ -30,3 +30,15 @@ jobs:
       - name: Execute lint
         run: earthly --ci -P +lint-docs
 
+  test2:
+    needs: test
+    name: +lint-docs2
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: earthly/actions-setup@main
+      - name: Execute lint
+        run: earthly --ci -P +lint-docs
+
