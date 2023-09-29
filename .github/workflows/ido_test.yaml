@@ -24,8 +24,8 @@ jobs:
       with:
         filters: |
           no-docs:
-            - '!docs/**'
             - '!*.md'
+            - '!docs/**'
   test:
     needs: changes
     if: ${{ needs.changes.outputs.no-docs == 'true' }}
