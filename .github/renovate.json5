@@ -10,7 +10,7 @@
   includePaths: [
     'docs/**',
     '.github/',
-  ],
+  ],sdf
   enabledManagers: [
     'regex',
   ],
