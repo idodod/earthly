@@ -17,6 +17,7 @@ jobs:
     # Set job outputs to values from filter step
     outputs:
       no-docs: ${{ steps.filter.outputs.no-docs }}
+      no-md: ${{ steps.filter.outputs.no-md }}
     steps:
     # For pull requests it's not necessary to checkout the code
     - uses: dorny/paths-filter@v2
@@ -24,10 +25,12 @@ jobs:
       with:
         filters: |
           no-docs:
-            - '*.md'
+            - '!docs/**'
+          no-md:
+            - '!*.md'
   test:
     needs: changes
-    if: ${{ needs.changes.outputs.no-docs == 'true' }}
+    if: ${{ needs.changes.outputs.no-docs == 'true' }} && ${{ needs.changes.outputs.no-md == 'true' }}
     name: +lint-docs
     runs-on: "ubuntu-latest"
     env:
