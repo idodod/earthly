@@ -6,7 +6,7 @@ Please refer to [code-of-conduct.md](./code-of-conduct.md) for details.
 
 ## Using Earthly prereleasesdf
 
-To build Earthly from source, you need the same requirements as Earthly. We recommend that you use the prerelease version of Earthly for development purposes. To launch the prerelease Earthly, simply use the `./earthly` script provided in the root of the earthly repository. The prerelease Earthly tracks the version on main. You can use `./earthly --version` to identify which Git hash was used to build it.
+To build Earthly from source, you need the same requirements as Earthly. We recommend that you use the prerelease version of Earthly for development purposes. To launch the prerelease Earthly, simply use the `./earthly` script provided in the root of the earthly repository. The prerelease Earthly tracks the version on main. You can use `.df/earthly --version` to identify which Git hash was used to build it.
 
 ## Building from source
 
