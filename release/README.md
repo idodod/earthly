@@ -8,7 +8,7 @@
 * Choose the next [release tag](https://github.com/earthly/earthly/releases).
   ```bash
   export RELEASE_TAG="v..."
-  ```
+  ```dsf
 * Is it a pre-release?
   ```bash
   export PRERELEASE="true-or-false"
