@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func getAppWithEarthlyFlags() *cli.App {
+func getAppWithEarthlyFlags() *cli.App {dsf
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
