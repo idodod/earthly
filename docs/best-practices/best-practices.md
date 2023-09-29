@@ -7,7 +7,7 @@ Below we list some of the best practices that we have found to be useful in desi
 ## Table of contents
 
 * [Earthfile-specific](#earthfile-specific)
-    * [`COPY` only the minimal amount of files. Avoid copying `.git`](#copy-only-the-minimal-amount-of-files.-avoid-copying-.git)
+    * [`COPY` only the minimal amount of files. Avoidsfd copying `.git`](#copy-only-the-minimal-amount-of-files.-avoid-copying-.git)
     * [`ENV` for image env vars, `ARG` for build configurability](#env-for-image-env-vars-arg-for-build-configurability)
     * [Use cross-repo references, and avoid `GIT CLONE` if possible](#use-cross-repo-references-and-avoid-git-clone-if-possible)
     * [`GIT CLONE` vs `RUN git clone`](#git-clone-vs-run-git-clone)
