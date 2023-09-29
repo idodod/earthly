@@ -1,0 +1,27 @@
+name: find pr file changes
+
+on:
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  file-changes:
+    runs-on: ubuntu-latest
+    # Set permissions to minimum required
+    permissions:
+      pull-requests: read
+    # Set job outputs to values from filter step
+    outputs:
+      non-doc: ${{ steps.filter.outputs.non-doc }}
+    steps:
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          non-doc:
+          # evaluate to true if at least one of the changed files is none of the following
+          # (separated by "|"):
+            - '!(docs/**|*.md|**/*.md|.github/renovate.json5)'

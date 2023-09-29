@@ -1,0 +1,31 @@
+name: lint-docs
+
+on:
+  push:
+    branches: [ main, next ]
+  pull_request:
+    branches: [ main, next ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    uses: ./.github/workflows/reuseable-find-pr-changes.yaml
+    permissions:
+      pull-requests: read
+    secrets: inherit
+  test:
+    needs: changes
+    if: ${{ needs.changes.outputs.non-doc == 'true' }}
+    name: +lint-docs
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: earthly/actions-setup@main
+      - name: Execute lint
+        run: earthly --ci -P +lint-docs
+
