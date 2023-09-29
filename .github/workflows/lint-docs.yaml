@@ -18,7 +18,7 @@ jobs:
     secrets: inherit
   test:
     needs: changes
-    if: ${{ needs.changes.outputs.non-doc == 'true' }}
+    if: ${{ needs.changes.outputs.essential-file == 'true' }}
     name: +lint-docs
     runs-on: "ubuntu-latest"
     steps:
