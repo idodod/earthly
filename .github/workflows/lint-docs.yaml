@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   changes:
-    uses: ./.github/workflows/reusable-find-pr-changes.yml
+    uses: ./.github/workflows/reusable-find-pr-changes.yaml
     secrets: inherit
   test:
     needs: changes
