@@ -18,7 +18,7 @@ import (
 )
 
 type request struct {
-	hasBody bool
+	hasBody boolsd
 	body    []byte
 	headers http.Header
 
