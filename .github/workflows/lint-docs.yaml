@@ -1,4 +1,4 @@
-name: lint-docs workflow
+name: CI workflow
 
 on:
   push:
@@ -16,15 +16,15 @@ jobs:
     permissions:
       pull-requests: read
     secrets: inherit
-  test:
+  build-earthly:
     needs: changes
-    name: lint-docs-job
+    name: build earthly
     uses: ./.github/workflows/reusable-lint.yaml
     with:
       CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
-  test2:
-    needs: test
-    name: lint-docs-job2
+  test:
+    needs: build-earthly
+    name: docker test
     uses: ./.github/workflows/reusable-lint.yaml
     with:
-      CONTINUE: true
+      CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
