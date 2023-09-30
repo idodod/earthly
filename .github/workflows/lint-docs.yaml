@@ -18,27 +18,7 @@ jobs:
     secrets: inherit
   test:
     needs: changes
-    # using "!= 'false'" so that an empty string (in case of output problem) will evaluate to true
-    if: ${{ needs.changes.outputs.essential-file != 'false' }}
     name: +lint-docs
-    runs-on: "ubuntu-latest"
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: earthly/actions-setup@main
-      - name: Execute lint
-        run: earthly --ci -P +lint-docs
-
-  test2:
-    needs: test
-    name: +lint-docs2
-    runs-on: "ubuntu-latest"
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: earthly/actions-setup@main
-      - name: Execute lint
-        run: earthly --ci -P +lint-docs
-
+    uses: ./.github/workflows/reuseable-lint.yaml
+    with:
+      CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
