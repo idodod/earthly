@@ -22,3 +22,9 @@ jobs:
     uses: ./.github/workflows/reusable-lint.yaml
     with:
       CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
+  test2:
+    needs: test
+    name: lint-docs-job2
+    uses: ./.github/workflows/reusable-lint.yaml
+    with:
+      CONTINUE: true
