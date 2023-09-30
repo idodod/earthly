@@ -19,16 +19,12 @@ jobs:
   build-earthly:
     needs: changes
     name: build earthly
-    runs-on: ubuntu-latest
-    steps:
-      - name: Step for job1
-        run: sdfsdf
- #   uses: ./.github/workflows/reusable-lint.yaml
- #   with:
- #     CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
+    uses: ./.github/workflows/reusable-lint.yaml
+    with:
+      CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
   test2:
     needs: build-earthly
-    if: ${{ !failure() && (needs.build-earthly.result == 'success' || needs.build-earthly.result == 'skipped') }}
+    if: ${{ success() && (needs.build-earthly.result == 'success' || needs.build-earthly.result == 'skipped') }}
     name: docker test
     uses: ./.github/workflows/reusable-lint.yaml
     with:
