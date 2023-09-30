@@ -22,17 +22,10 @@ jobs:
     uses: ./.github/workflows/reusable-lint.yaml
     with:
       CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
-  test:
-    runs-on: ubuntu-latest
-    needs: build-earthly
-    if: ${{ always() }}
-    name: test needs output
-    steps:
-      - run: echo hello from ${{ needs.build-earthly.result }}
   test2:
     needs: build-earthly
     if: ${{ always() && (needs.build-earthly.result == 'success' || needs.build-earthly.result == 'skipped') }}
     name: docker test
     uses: ./.github/workflows/reusable-lint.yaml
     with:
-      CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
+      CONTINUE: ${{ needs.build-earthly.result == 'success' }}
