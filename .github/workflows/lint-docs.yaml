@@ -1,4 +1,4 @@
-name: lint-docs
+name: lint-docs workflow
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
     secrets: inherit
   test:
     needs: changes
-    name: +lint-docs
+    name: lint-docs-job
     uses: ./.github/workflows/reusable-lint.yaml
     with:
       CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
