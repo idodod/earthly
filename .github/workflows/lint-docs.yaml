@@ -22,8 +22,15 @@ jobs:
     uses: ./.github/workflows/reusable-lint.yaml
     with:
       CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
-  test:
+  ensure-run:
+    if: ${{ success() }}
     needs: build-earthly
+    runs-on: ubuntu-latest
+    name: ensure run
+    steps:
+      - run: echo ensuring run after earthly build
+  test:
+    needs: ensure-run
     name: docker test
     uses: ./.github/workflows/reusable-lint.yaml
     with:
