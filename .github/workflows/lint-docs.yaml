@@ -1,0 +1,31 @@
+name: CI workflow
+
+on:
+  push:
+    branches: [ main, next ]
+  pull_request:
+    branches: [ main, next ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    uses: ./.github/workflows/reuseable-find-pr-changes.yaml
+    permissions:
+      pull-requests: read
+    secrets: inherit
+  build-earthly:
+    needs: changes
+    name: build earthly
+    uses: ./.github/workflows/reusable-lint.yaml
+    with:
+      CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
+  test2:
+    needs: build-earthly
+    if: ${{ !failure() && (needs.build-earthly.result == 'success' || needs.build-earthly.result == 'skipped') }}
+    name: docker test
+    uses: ./.github/workflows/reusable-lint.yaml
+    with:
+      CONTINUE: ${{ needs.build-earthly.result == 'success' }}
