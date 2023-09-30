@@ -10,7 +10,7 @@ on:
 jobs:
   lint-this:
     if: ${{inputs.CONTINUE}}
-    name: +lint-docs
+    name: reusable-lint
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v3
