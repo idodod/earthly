@@ -19,13 +19,3 @@ jobs:
       - uses: earthly/actions-setup@main
       - name: Execute lint
         run: earthly --ci -P +lint-docs
-  lint-this2:
-    name: reusable-lint2
-    runs-on: "ubuntu-latest"
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: earthly/actions-setup@main
-      - name: Execute lint
-        run: earthly --ci -P +lint-docs
