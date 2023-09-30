@@ -31,7 +31,7 @@ jobs:
       - run: echo hello from ${{ needs.build-earthly.result }}
   test2:
     needs: build-earthly
-    if: ${{ needs.build-earthly.result == 'skipped' }}
+    if: ${{ always() }}
     name: docker test
     uses: ./.github/workflows/reusable-lint.yaml
     with:
