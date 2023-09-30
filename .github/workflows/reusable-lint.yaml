@@ -9,11 +9,11 @@ on:
 
 jobs:
   lint-this:
-    if: ${{inputs.CONTINUE}}
-    name: reusable-lint
+    name: grand child task
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v3
+      - if: ${{inputs.CONTINUE}}
+        uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: earthly/actions-setup@main
