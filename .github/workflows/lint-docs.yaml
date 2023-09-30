@@ -19,6 +19,6 @@ jobs:
   test:
     needs: changes
     name: +lint-docs
-    uses: ./.github/workflows/reuseable-lint.yaml
+    uses: ./.github/workflows/reusable-lint.yaml
     with:
       CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
