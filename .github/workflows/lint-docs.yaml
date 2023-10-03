@@ -1,4 +1,4 @@
-name: lint-docs
+name: CI workflow
 
 on:
   push:
@@ -11,21 +11,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ido:
+    name: ido test
+    uses: ./.github/workflows/reusable-test.yaml
+    with:
+      VAL1: ${{ github.ref != 'refs/heads/main' }}
+      VAL2: ${{ github.ref == 'refs/heads/main' }}
+      VAL3: format('--BRANCH={0}', ${{ GITHUB_HEAD_REF }})
   changes:
     uses: ./.github/workflows/reuseable-find-pr-changes.yaml
     permissions:
       pull-requests: read
     secrets: inherit
-  test:
+  build-earthly:
     needs: changes
-    if: ${{ needs.changes.outputs.essential-file == 'true' }}
-    name: +lint-docs
-    runs-on: "ubuntu-latest"
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: earthly/actions-setup@main
-      - name: Execute lint
-        run: earthly --ci -P +lint-docs
-
+    name: build earthly
+    uses: ./.github/workflows/reusable-lint.yaml
+    with:
+      CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
+  test2:
+    needs: build-earthly
+    #if: ${{ !failure() && (needs.build-earthly.result == 'success' || needs.build-earthly.result == 'skipped') }}
+    if: ${{ !failure() }}
+    name: docker test
+    uses: ./.github/workflows/reusable-lint.yaml
+    with:
+      CONTINUE: ${{ needs.build-earthly.result == 'success' }}

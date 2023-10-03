@@ -5,14 +5,14 @@ on:
     outputs:
       essential-file:
         description: A boolean (as string) indicating whether essential files were changed in the PR"
-        value: ${{ jobs.file-changes.outputs.essential-file }}
+        value: ${{ jobs.pr-changes.outputs.essential-file }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  file-changes:
+  pr-changes:
     runs-on: ubuntu-latest
     # Set permissions to minimum required
     permissions:
@@ -28,4 +28,4 @@ jobs:
           essential-file:
           # evaluate to true if at least one of the changed files is none of the following
           # (separated by "|"):
-            - '!(docs/**|*.md|**/*.md|.github/renovate.json5)'
+            - '!(docs/**/*|*.md|**/*.md|.github/renovate.json5)'
