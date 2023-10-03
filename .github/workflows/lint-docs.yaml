@@ -17,7 +17,7 @@ jobs:
     with:
       VAL1: ${{ github.ref != 'refs/heads/main' }}
       VAL2: ${{ github.ref == 'refs/heads/main' }}
-      VAL3: '--BRANCH=${GITHUB_HEAD_REF}'
+      VAL3: "--BRANCH=${GITHUB_HEAD_REF}"
   changes:
     uses: ./.github/workflows/reuseable-find-pr-changes.yaml
     permissions:
