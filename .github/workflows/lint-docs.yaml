@@ -13,7 +13,7 @@ concurrency:
 jobs:
   ido:
     name: ido test
-    uses: ./.github/workflows/reusable-test.yaml
+    uses: ./.github/workflows/reusable_test.yaml
     with:
       VAL1: ${{ github.ref != 'refs/heads/main' }}
       VAL2: ${{ github.ref == 'refs/heads/main' }}
