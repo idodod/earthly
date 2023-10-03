@@ -11,6 +11,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  ido:
+    name: ido test
+    uses: ./.github/workflows/reusable-test.yaml
+    with:
+      VAL1: ${{ github.ref != 'refs/heads/main' }}
+      VAL2: ${{ github.ref == 'refs/heads/main' }}
+      VAL3: format('--BRANCH={0}', ${{ GITHUB_HEAD_REF }})
   changes:
     uses: ./.github/workflows/reuseable-find-pr-changes.yaml
     permissions:
@@ -24,7 +31,8 @@ jobs:
       CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
   test2:
     needs: build-earthly
-    if: ${{ always() && (needs.build-earthly.result == 'success' || needs.build-earthly.result == 'skipped') }}
+    #if: ${{ !failure() && (needs.build-earthly.result == 'success' || needs.build-earthly.result == 'skipped') }}
+    if: ${{ !failure() }}
     name: docker test
     uses: ./.github/workflows/reusable-lint.yaml
     with:
