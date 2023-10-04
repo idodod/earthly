@@ -1,0 +1,24 @@
+name: reuseable-test
+
+on:
+  workflow_call:
+    inputs:
+      VAL1:
+        required: true
+        type: boolean
+      VAL2:
+        required: true
+        type: boolean
+      VAL3:
+        required: true
+        type: string
+
+jobs:
+  lint-this:
+    name: grand child task
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: echo values
+        run: echo ${{ format('{0}',inputs.VAL1) }} && \
+            echo ${{ format('{0}',inputs.VAL2) }} && \
+            echo ${{inputs.VAL3}}

@@ -1,0 +1,31 @@
+name: find pr file changes
+
+on:
+  workflow_call:
+    outputs:
+      essential-file:
+        description: A boolean (as string) indicating whether essential files were changed in the PR"
+        value: ${{ jobs.pr-changes.outputs.essential-file }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-changes:
+    runs-on: ubuntu-latest
+    # Set permissions to minimum required
+    permissions:
+      pull-requests: read
+    # Set job outputs to values from filter step
+    outputs:
+      essential-file: ${{ steps.filter.outputs.essential-file }}
+    steps:
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          essential-file:
+          # evaluate to true if at least one of the changed files is none of the following
+          # (separated by "|"):
+            - '!(docs/**/*|*.md|**/*.md|.github/renovate.json5)'

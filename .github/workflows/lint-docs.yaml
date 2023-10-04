@@ -1,0 +1,43 @@
+name: CI workflow
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: [ docs/** ]
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ido:
+    name: ido test
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      VAL1: ${{ github.ref != 'refs/heads/main' }}
+      VAL2: ${{ github.ref == 'refs/heads/main' }}
+      VAL3: --BRANCH=${{ github.head_ref }}
+  changes:
+    uses: ./.github/workflows/reuseable-find-pr-changes.yaml
+    permissions:
+      pull-requests: read
+    secrets: inherit
+  build-earthly:
+    needs: changes
+    name: build earthly
+    uses: ./.github/workflows/reusable-lint.yaml
+    with:
+      CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
+  test2:
+    needs: build-earthly
+    #if: ${{ !failure() && (needs.build-earthly.result == 'success' || needs.build-earthly.result == 'skipped') }}
+    if: ${{ !failure() }}
+    name: docker test
+    uses: ./.github/workflows/reusable-lint.yaml
+    with:
+      CONTINUE: ${{ needs.build-earthly.result == 'success' }}
