@@ -2,9 +2,13 @@ name: CI workflow
 
 on:
   push:
-    branches: [ main, next ]
+    branches: [ main ]
+    paths-ignore: [ docs/** ]
   pull_request:
-    branches: [ main, next ]
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
