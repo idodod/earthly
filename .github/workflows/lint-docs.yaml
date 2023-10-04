@@ -2,33 +2,44 @@ name: CI workflow
 
 on:
   push:
-    branches: [ main, next ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, next ]
+    branches: [ main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  tutorial:
+    name: Tutorial
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
   ido:
     name: ido test
+    if: ${{ failure() && (github.event_name == 'pull_request' || github.event.pull_request.head.repo.full_name == 'ido123') }}
     uses: ./.github/workflows/reusable_test.yaml
     with:
       VAL1: ${{ github.ref != 'refs/heads/main' }}
       VAL2: ${{ github.ref == 'refs/heads/main' }}
       VAL3: --BRANCH=${{ github.head_ref }}
   changes:
+    #1
+    if: ${{ github.event_name == 'pull_request' }}
     uses: ./.github/workflows/reuseable-find-pr-changes.yaml
     permissions:
       pull-requests: read
     secrets: inherit
   build-earthly:
     needs: changes
+    if: ${{ !failure() }}
     name: build earthly
     uses: ./.github/workflows/reusable-lint.yaml
     with:
-      CONTINUE: ${{ needs.changes.outputs.essential-file != 'false' }}
+      SKIP_JOB: ${{ needs.changes.outputs.essential-file == 'false' }}
   test2:
     needs: build-earthly
     #if: ${{ !failure() && (needs.build-earthly.result == 'success' || needs.build-earthly.result == 'skipped') }}
@@ -36,4 +47,4 @@ jobs:
     name: docker test
     uses: ./.github/workflows/reusable-lint.yaml
     with:
-      CONTINUE: ${{ needs.build-earthly.result == 'success' }}
+      SKIP_JOB: ${{ needs.build-earthly.result != 'success' }}
