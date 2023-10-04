@@ -3,13 +3,13 @@ name: reuseable-lint
 on:
   workflow_call:
     inputs:
-      CONTINUE:
+      SKIP_JOB:
         required: true
         type: boolean
 
 jobs:
   lint-this:
-    if: ${{inputs.CONTINUE}}
+    if: ${{!inputs.SKIP_JOB}}
     name: grand child task
     runs-on: "ubuntu-latest"
     steps:
