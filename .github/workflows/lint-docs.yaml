@@ -2,15 +2,23 @@ name: CI workflow
 
 on:
   push:
-    branches: [ main, next ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, next ]
+    branches: [ main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  ido:
+    name: ido test
+    if: ${{ true && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      VAL1: ${{ github.ref != 'refs/heads/main' }}
+      VAL2: ${{ github.ref == 'refs/heads/main' }}
+      VAL3: --BRANCH=${{ github.head_ref }}
   changes:
     uses: ./.github/workflows/reuseable-find-pr-changes.yaml
     permissions:
