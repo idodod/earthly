@@ -10,7 +10,6 @@ on:
 jobs:
   lint-this:
     if: ${{!inputs.SKIP_JOB}}
-    name: grand child task
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v3
