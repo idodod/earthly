@@ -10,7 +10,7 @@
   includePaths: [
     'docs/**',
     '.github/',
-    'release/',
+    'release/**',
   ],
   enabledManagers: [
     'regex',
