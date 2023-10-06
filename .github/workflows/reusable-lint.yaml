@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: first step
         if: ${{inputs.SKIP_JOB}}
-        run: echo "going to exit job" && exit 1
+        run: echo "going to exit job" && exit 0
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
