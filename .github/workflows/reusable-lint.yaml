@@ -3,16 +3,17 @@ name: reuseable-lint
 on:
   workflow_call:
     inputs:
-      CONTINUE:
+      SKIP_JOB:
         required: true
         type: boolean
 
 jobs:
   lint-this:
-    if: ${{inputs.CONTINUE}}
-    name: grand child task
     runs-on: "ubuntu-latest"
     steps:
+      - name: first step
+        if: ${{!inputs.SKIP_JOB}}
+        run: echo "this should be skipped"
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
