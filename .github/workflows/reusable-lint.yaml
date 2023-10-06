@@ -9,9 +9,11 @@ on:
 
 jobs:
   lint-this:
-    if: ${{!inputs.SKIP_JOB}}
     runs-on: "ubuntu-latest"
     steps:
+      - name: first step
+        if: ${{!inputs.SKIP_JOB}}
+        run: echo "this should be skipped"
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
