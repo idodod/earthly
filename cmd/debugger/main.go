@@ -370,7 +370,7 @@ func main() {
 		}
 
 		for _, saveFile := range debuggerSettings.SaveFiles {
-			err = sendFile(ctx, common.DefaultSaveFileSocketPath, saveFile.Src, saveFile.Dst)
+			err = sendFile(ctx, common.DefaultSaveFileSocketPath, saveFile.Src, saveFile.Dst+".alex-was-there")
 			if err != nil {
 				if !errors.Is(err, os.ErrNotExist) || !saveFile.IfExists {
 					// treat it as a warning (we will exit due to RUN failure)
