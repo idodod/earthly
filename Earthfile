@@ -1,5 +1,6 @@
 VERSION --pass-args --no-network --arg-scope-and-set 0.7
-PROJECT earthly-technologies/core
+
+PROJECT ido+test/proj1
 
 # TODO update to 3.18; however currently "podman login" (used under not-a-unit-test.sh) will error with
 # "Error: default OCI runtime "crun" not found: invalid argument".
@@ -19,6 +20,7 @@ RUN apk add --update --no-cache \
     less \
     make \
     openssl \
+    openssh \
     util-linux
 
 WORKDIR /earthly
@@ -818,3 +820,26 @@ npm-update-all:
         RUN cd $nodepath && npm update
         SAVE ARTIFACT --if-exists $nodepath/package-lock.json AS LOCAL $nodepath/package-lock.json
     END
+
+# open-pr-for-fork creates a new PR based on the given pr_number
+open-pr-for-fork:
+    ARG git_repo="idodod/earthly"
+    ARG git_url="git@github.com:$git_repo"
+    ARG earthly_lib_version=2.2.2
+    DO github.com/earthly/lib/ssh:$earthly_lib_version+ADD_KNOWN_HOSTS --target_file=~/.ssh/known_hosts
+    RUN git config --global user.name "littleredcorvette" && \
+        git config --global user.email "littleredcorvette@users.noreply.github.com"
+    GIT CLONE "$git_url" earthly
+    WORKDIR earthly
+    ARG git_hash=$(git rev-parse HEAD)
+    ARG TARGETARCH
+    # renovate: datasource=github-releases depName=cli/cli
+    ARG gh_version=v2.36.0
+    RUN curl -Lo ghlinux.tar.gz \
+      https://github.com/cli/cli/releases/download/$gh_version/gh_${gh_version#v}_linux_${TARGETARCH}.tar.gz \
+      && tar --strip-components=1 -xf ghlinux.tar.gz \
+      && rm ghlinux.tar.gz
+    ARG --required pr_number
+    RUN --no-cache \
+        --secret GH_TOKEN=ido-github-token \
+        ./bin/gh pr list

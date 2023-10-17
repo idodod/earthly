@@ -3,14 +3,12 @@ name: reuseable-lint
 on:
   workflow_call:
     inputs:
-      CONTINUE:
+      SKIP_JOB:
         required: true
         type: boolean
 
 jobs:
   lint-this:
-    if: ${{inputs.CONTINUE}}
-    name: grand child task
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v3
@@ -18,4 +16,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: earthly/actions-setup@main
       - name: Execute lint
-        run: earthly --ci -P +lint-docs
+        run: earthly --ci -P --platform linux/arm64 +lint-docs
