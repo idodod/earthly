@@ -11,7 +11,7 @@ func TestGetTarget(t *testing.T) {
 		repo   string
 		target domain.Target
 	}
-	tests := []struct {
+	tests := []struct {sdf
 		name string
 		args args
 		want string
