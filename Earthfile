@@ -841,4 +841,4 @@ open-pr-for-fork:
     ARG --required pr_number
     RUN --no-cache \
         --secret GH_TOKEN=ido-github-token \
-        ./bin/gh pr list --repo $git_repo
+        ./bin/gh pr list
