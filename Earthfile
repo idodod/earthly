@@ -1,5 +1,7 @@
 VERSION --pass-args --no-network --arg-scope-and-set 0.7
 
+PROJECT ido+test/proj1
+
 # TODO update to 3.18; however currently "podman login" (used under not-a-unit-test.sh) will error with
 # "Error: default OCI runtime "crun" not found: invalid argument".
 FROM golang:1.21-alpine3.17
