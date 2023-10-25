@@ -7,7 +7,7 @@ on:
 
 jobs:
   create-pr:
-    if: ${{ github.event.label.name == 'approved-for-tests' && github.event.pull_request.head.repo.full_name != github.repository }}
+    if: ${{ github.event.label.name == 'approved-for-tests' }}
     runs-on: "ubuntu-latest"
     env:
       FORCE_COLOR: 1
