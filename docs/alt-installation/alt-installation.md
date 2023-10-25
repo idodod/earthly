@@ -9,7 +9,7 @@ This page outlines alternative installation instructions for the `earthly` build
 * (*Windows only*) [Docker WSL 2 backend](https://docs.docker.com/docker-for-windows/wsl/) or [Podman WSL2 backend](https://github.com/containers/podman/blob/main/docs/tutorials/podman-for-windows.md)
 
 ## Install earthly
-
+dsdsfsdf
 Download the binary relevant to your platform from [the releases page](https://github.com/earthly/earthly/releases), rename it to `earthly` and place it in your `bin`.
 
 To initialize the installation, including adding auto-completion for your shell, run
