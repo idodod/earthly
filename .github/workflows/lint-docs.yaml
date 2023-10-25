@@ -14,13 +14,15 @@ concurrency:
 
 jobs:
   print1:
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - name: test1
         run: echo hello world ${{ github.event_name }}
   ido:
     name: ido test
-    if: ${{ failure() && (github.event_name == 'pull_request' || github.event.pull_request.head.repo.full_name == 'ido123') }}
+    needs: print1
+    if: ${{ failure() && (github.event_name == 'pull_request_target' || github.event.pull_request.head.repo.full_name == 'ido123') }}
     uses: ./.github/workflows/reusable_test.yaml
     with:
       VAL1: ${{ github.ref != 'refs/heads/main' }}
