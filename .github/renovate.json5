@@ -11,9 +11,19 @@
     'docs/**',
     '.github/',
     'release/**',
+    'earthfile2llb/**',
+    'ast/tests/**',
   ],
+  dockerfile: {
+    fileMatch: [
+      'Earthfile',
+      '*.earth$',
+    ],
+  },
   enabledManagers: [
     'regex',
+    'github-actions',
+    'dockerfile',
   ],
   customManagers: [
     {
@@ -33,6 +43,23 @@
       depNameTemplate: 'earthly/earthly',
       datasourceTemplate: 'github-releases',
     },
+    {
+      customType: 'regex',
+      fileMatch: [
+        'earthfile2llb/with_docker_run_base.go',
+        'tests/with-docker/Earthfile',
+        'ast/tests/with-docker.ast.json'
+      ],
+      matchStrings: [
+        '"(--DIND_IMG=)?earthly/dind:(?<currentValue>.+?)"',
+        '--DIND_IMG=earthly/dind:(?<currentValue>.+?)[\\s\\n/]+',
+        '`(FROM )?earthly/dind:(?<currentValue>.+?)`',
+        'FROM earthly/dind:(?<currentValue>.+?)[\\s\\n/]+',
+        'earthly/dind:(?<currentValue>.+?) (\\||@)',
+      ],
+      depNameTemplate: "earthly/dind",
+      datasourceTemplate: 'docker'
+    }
   ],
   labels: [
     'renovate',
@@ -49,5 +76,20 @@
         'earthly-version-in-docs',
       ],
     },
+    {
+      matchPackageNames: [
+        '*',
+      ],
+      matchDatasources: [
+        'docker',
+      ],
+      excludePackageNames: [
+        'earthly/dind'
+      ],
+      enabled: false,
+      addLabels: [
+        '{{depName}}',
+      ]
+    }
   ],
 }
