@@ -80,13 +80,17 @@
       matchDatasources: [
         'docker',
       ],
-      excludePackageNames: [
-        'earthly/dind'
-      ],
       enabled: false,
+    },
+    {
+      matchDatasources: [
+        'docker',
+      ],
+      matchPackagePatterns: ['earthly/dind'],
+      enabled: true,
       addLabels: [
         '{{depName}}',
       ]
-    }
+    },
   ],
 }
