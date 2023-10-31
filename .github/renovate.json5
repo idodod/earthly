@@ -60,7 +60,7 @@
         'earthly/dind:(?<currentValue>.+?) (\\||@)',
       ],
       depNameTemplate: 'earthly/dind',
-      datasourceTemplate: 'docker'
+      datasourceTemplate: 'docker',
     }
   ],
   labels: [
@@ -77,6 +77,11 @@
       addLabels: [
         'earthly-version-in-docs',
       ],
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["earthly/dind"],
+      "versioning": "loose",
     },
   ],
 }
