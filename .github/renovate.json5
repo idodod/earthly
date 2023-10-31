@@ -78,12 +78,5 @@
         'earthly-version-in-docs',
       ],
     },
-    {
-      matchPackagePatterns: ["*"],
-      excludePackageNames: [
-        "earthly/dind"
-      ],
-      enabled: false,
-    },
   ],
 }
