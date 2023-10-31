@@ -46,8 +46,10 @@
     {
       customType: 'regex',
       fileMatch: [
+        '.+.md',
+        '.+.earth',
         'earthfile2llb/with_docker_run_base.go',
-        'tests/with-docker/Earthfile',
+        'Earthfile',
         'ast/tests/with-docker.ast.json'
       ],
       matchStrings: [
@@ -57,7 +59,7 @@
         'FROM earthly/dind:(?<currentValue>.+?)[\\s\\n/]+',
         'earthly/dind:(?<currentValue>.+?) (\\||@)',
       ],
-      depNameTemplate: "earthly/dind",
+      depNameTemplate: 'earthly/dind',
       datasourceTemplate: 'docker'
     }
   ],
@@ -79,7 +81,7 @@
     {
       matchPackagePatterns: ["*"],
       excludePackageNames: [
-        'earthly/dind'
+        "earthly/dind"
       ],
       enabled: false,
     },
