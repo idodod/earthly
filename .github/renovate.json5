@@ -77,17 +77,11 @@
       ],
     },
     {
-      matchDatasources: [
-        'docker',
-      ],
-      matchPackagePatterns: ['*'],
+      matchPackagePatterns: ["*"],
       excludePackageNames: [
         'earthly/dind'
       ],
       enabled: false,
-      addLabels: [
-        '{{depName}}',
-      ]
     },
   ],
 }
