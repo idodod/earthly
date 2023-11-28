@@ -4,6 +4,7 @@
     'config:recommended',
     'default:pinDigestsDisabled',
   ],
+  baseBranches: ['main', 'docs-0.7'],
   configMigration: true,
   prHourlyLimit: 1,
   prConcurrentLimit: 3,
@@ -88,7 +89,11 @@
       addLabels: [
         'earthly-version-in-docs',
       ],
-      baseBranches: ['docs-0.7']
+    },
+    {
+	    baseBranchList: ['docs-0.7'],
+      excludePackagePatterns: ['earthly/earthly'],
+      enabled: false,
     },
     {
       "matchDatasources": ["docker"],
