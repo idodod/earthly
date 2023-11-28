@@ -89,21 +89,22 @@
       addLabels: [
         'earthly-version-in-docs',
       ],
+	automerge: true,
     },
     {
-	    baseBranchList: ['docs-0.7'],
-      excludePackagePatterns: ['earthly/earthly'],
-      enabled: false,
+	baseBranchList: ['docs-0.7'],
+      	excludePackagePatterns: ['earthly/earthly'],
+      	enabled: false,
     },
     {
-      baseBranchList: ['main'],
-      matchPackagePatterns: ['earthly/earthly'],
-      enabled: false,
+      	baseBranchList: ['main'],
+      	matchPackagePatterns: ['earthly/earthly'],
+      	enabled: false,
     },
     {
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["earthly/dind"],
-      "versioning": "loose",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["earthly/dind"],
+      versioning: "loose",
     },
   ],
 }
