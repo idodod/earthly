@@ -46,6 +46,17 @@
     {
       customType: 'regex',
       fileMatch: [
+        '^git.go$',
+      ],
+      matchStrings: [
+        '.*? = "alpine/git:(?<currentValue>.+)',
+      ],
+      depNameTemplate: 'alpine/git',
+      datasourceTemplate: 'docker',
+    },
+    {
+      customType: 'regex',
+      fileMatch: [
         '.+.md',
         '.+.earth',
         'earthfile2llb/with_docker_run_base.go',
