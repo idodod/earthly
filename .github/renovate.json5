@@ -88,6 +88,7 @@
       addLabels: [
         'earthly-version-in-docs',
       ],
+      baseBranches: ['docs-0.7']
     },
     {
       "matchDatasources": ["docker"],
