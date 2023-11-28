@@ -96,6 +96,11 @@
       enabled: false,
     },
     {
+      baseBranchList: ['main'],
+      matchPackagePatterns: ['earthly/earthly'],
+      enabled: false,
+    },
+    {
       "matchDatasources": ["docker"],
       "matchPackageNames": ["earthly/dind"],
       "versioning": "loose",
