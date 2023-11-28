@@ -49,7 +49,7 @@
         '^git.go$',
       ],
       matchStrings: [
-        '.*? = "alpine/git:(?<currentValue>.+)',
+        '.+?\\s*=\\s*"alpine/git:(?<currentValue>.+?)"',
       ],
       depNameTemplate: 'alpine/git',
       datasourceTemplate: 'docker',
