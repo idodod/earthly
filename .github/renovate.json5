@@ -46,10 +46,10 @@
     {
       customType: 'regex',
       fileMatch: [
-        '^git.go$',
+        'buildcontext/git.go',
       ],
       matchStrings: [
-        '.+?\\s*=\\s*"alpine/git:(?<currentValue>.+?)"',
+        'alpine/git:(?<currentValue>.+?)"',
       ],
       depNameTemplate: 'alpine/git',
       datasourceTemplate: 'docker',
