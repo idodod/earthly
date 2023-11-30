@@ -14,6 +14,7 @@
     'release/**',
     'earthfile2llb/**',
     'ast/tests/**',
+    'buildcontext/**',
   ],
   dockerfile: {
     fileMatch: [
@@ -50,7 +51,7 @@
         'buildcontext/git.go',
       ],
       matchStrings: [
-        'defaultGitImage = "alpine/git:(?<currentValue>.+?)"',
+        '= "alpine/git:(?<currentValue>.+?)"',
       ],
       depNameTemplate: 'alpine/git',
       datasourceTemplate: 'docker',
