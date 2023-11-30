@@ -20,7 +20,7 @@
   dockerfile: {
     fileMatch: [
       'Earthfile',
-      '\.earth$',
+      '.+.earth$',
     ],
   },
   enabledManagers: [
@@ -94,13 +94,5 @@
         'every month',
       ],
 	},
-       // disable any docker dependencies that are not alpine/git (temporary until we add other dependencies)
-    {
-      matchManagers: [
-        'dockerfile',
-      ],
-      excludePackagePatterns: ['alpine/git'],
-      enabled: false,
-    }
   ],
 }
