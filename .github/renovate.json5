@@ -4,16 +4,23 @@
     'config:recommended',
     'default:pinDigestsDisabled',
   ],
+  baseBranches: ['main', 'docs-0.7'],
+  configMigration: true,
+  prHourlyLimit: 1,
+  prConcurrentLimit: 3,
+  includePaths: [
+    'docs/**',
+    '.github/**',
+    'release/**',
+    'buildcontext/**',
+    'tests/**',
+  ],
   ignorePaths: [
     "**/node_modules/**",
     "**/bower_components/**",
     "**/vendor/**",
     "**/__fixtures__/**"
   ],
-  baseBranches: ['main', 'docs-0.7'],
-  configMigration: true,
-  prHourlyLimit: 1,
-  prConcurrentLimit: 3,
   enabledManagers: [
     'regex',
     'github-actions',
