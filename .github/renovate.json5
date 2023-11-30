@@ -50,30 +50,11 @@
         'buildcontext/git.go',
       ],
       matchStrings: [
-        'alpine/git:(?<currentValue>.+?)"',
+        'defaultGitImage = "alpine/git:(?<currentValue>.+?)"',
       ],
       depNameTemplate: 'alpine/git',
       datasourceTemplate: 'docker',
     },
-    {
-      customType: 'regex',
-      fileMatch: [
-        '.+.md',
-        '.+.earth',
-        'earthfile2llb/with_docker_run_base.go',
-        'Earthfile',
-        'ast/tests/with-docker.ast.json'
-      ],
-      matchStrings: [
-        '"(--DIND_IMG=)?earthly/dind:(?<currentValue>.+?)"',
-        '--DIND_IMG=earthly/dind:(?<currentValue>.+?)[\\s\\n/]+',
-        '`(FROM )?earthly/dind:(?<currentValue>.+?)`',
-        'FROM earthly/dind:(?<currentValue>.+?)[\\s\\n/]+',
-        'earthly/dind:(?<currentValue>.+?) (\\||@)',
-      ],
-      depNameTemplate: 'earthly/dind',
-      datasourceTemplate: 'docker',
-    }
   ],
   labels: [
     'renovate',
