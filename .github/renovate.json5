@@ -4,6 +4,12 @@
     'config:recommended',
     'default:pinDigestsDisabled',
   ],
+  ignorePaths: [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/__fixtures__/**"
+  ],
   baseBranches: ['main', 'docs-0.7'],
   configMigration: true,
   prHourlyLimit: 1,
