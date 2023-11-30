@@ -8,27 +8,17 @@
   configMigration: true,
   prHourlyLimit: 1,
   prConcurrentLimit: 3,
-  includePaths: [
-    'docs/**',
-    '.github/',
-    'release/**',
-    'earthfile2llb/**',
-    'ast/tests/**',
-    'buildcontext/**',
-    'tests/**/**',
-    'tests/**',
-  ],
-  dockerfile: {
-    fileMatch: [
-      'Earthfile',
-      '\\.earth$',
-    ],
-  },
   enabledManagers: [
     'regex',
     'github-actions',
     'dockerfile',
   ],
+  dockerfile: {
+    fileMatch: [
+      'Earthfile',
+      'earth$',
+    ],
+  },
   customManagers: [
     {
       customType: 'regex',
