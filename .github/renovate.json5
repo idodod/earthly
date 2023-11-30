@@ -14,9 +14,7 @@
     'dockerfile',
   ],
   dockerfile: {
-    fileMatch: [
-      'git-clone-private-ssh\\.earth',
-    ],
+    fileMatch: [".*?\\.earth"],
   },
   customManagers: [
     {
