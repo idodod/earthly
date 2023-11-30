@@ -14,7 +14,7 @@
     'dockerfile',
   ],
   dockerfile: {
-    fileMatch: [".*?\\.earth"],
+    fileMatch: ["(^|/).+?\\.earth$"],
   },
   customManagers: [
     {
