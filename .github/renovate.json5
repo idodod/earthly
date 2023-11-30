@@ -4,7 +4,10 @@
     'config:recommended',
     'default:pinDigestsDisabled',
   ],
-  baseBranches: ['main', 'docs-0.7'],
+  baseBranches: [
+    'main',
+    'docs-0.7',
+  ],
   configMigration: true,
   prHourlyLimit: 1,
   prConcurrentLimit: 3,
@@ -17,18 +20,20 @@
     'ast/tests/**',
   ],
   ignorePaths: [
-    "**/node_modules/**",
-    "**/bower_components/**",
-    "**/vendor/**",
-    "**/__fixtures__/**"
+    '**/node_modules/**',
+    '**/bower_components/**',
+    '**/vendor/**',
+    '**/__fixtures__/**',
   ],
   enabledManagers: [
-    'regex',
+    'custom.regex',
     'github-actions',
     'dockerfile',
   ],
   dockerfile: {
-    fileMatch: [".*\\.earth$"],
+    fileMatch: [
+      '.*\\.earth$',
+    ],
   },
   customManagers: [
     {
@@ -52,7 +57,7 @@
       customType: 'regex',
       fileMatch: [
         'buildcontext/git.go',
-        'ast/tests/git-clone.ast.json'
+        'ast/tests/git-clone.ast.json',
       ],
       matchStrings: [
         '"alpine/git:(?<currentValue>.+?)"',
@@ -75,19 +80,26 @@
       addLabels: [
         'earthly-version-in-docs',
       ],
-	automerge: true,
+      automerge: true,
     },
     {
-	baseBranchList: ['docs-0.7'],
-      	excludePackagePatterns: ['earthly/earthly'],
-      	enabled: false,
+      matchBaseBranches: [
+        'docs-0.7',
+      ],
+      excludePackagePatterns: [
+        'earthly/earthly',
+      ],
+      enabled: false,
     },
     {
-      	baseBranchList: ['main'],
-      	matchPackagePatterns: ['earthly/earthly'],
-      	enabled: false,
+      matchBaseBranches: [
+        'main',
+      ],
+      matchPackagePatterns: [
+        'earthly/earthly',
+      ],
+      enabled: false,
     },
-    // group all alpine/git updates across the repo to one PR and schedule it to once a month
     {
       groupName: 'alpine/git',
       matchPackageNames: [
@@ -96,14 +108,15 @@
       schedule: [
         'every month',
       ],
-	},
-    // disable any docker dependencies that are not alpine/git (temporary until we add other dependencies)
+    },
     {
       matchManagers: [
         'dockerfile',
       ],
-      excludePackagePatterns: ['alpine/git'],
+      excludePackagePatterns: [
+        'alpine/git',
+      ],
       enabled: false,
-    }
+    },
   ],
 }
