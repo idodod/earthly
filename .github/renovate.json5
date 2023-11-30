@@ -87,7 +87,7 @@
     },
     // group all alpine/git updates across the repo to one PR and schedule it to once a month
     {
-      groupName: '{{depName}}',
+      groupName: 'alpine/git',
       matchPackageNames: [
         'alpine/git',
       ],
