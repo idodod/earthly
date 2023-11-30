@@ -15,6 +15,7 @@
     'earthfile2llb/**',
     'ast/tests/**',
     'buildcontext/**',
+    'tests/**',
   ],
   dockerfile: {
     fileMatch: [
@@ -83,10 +84,23 @@
       	matchPackagePatterns: ['earthly/earthly'],
       	enabled: false,
     },
+    // group all alpine/git updates across the repo to one PR and schedule it to once a month
     {
-      matchDatasources: ["docker"],
-      matchPackageNames: ["earthly/dind"],
-      versioning: "loose",
-    },
+      groupName: '{{depName}}_{{updateType}}',
+      matchPackageNames: [
+        'alpine/git',
+      ],
+      schedule: [
+        'every month',
+      ],
+	},
+       // disable any docker dependencies that are not alpine/git (temporary until we add other dependencies)
+    {
+      matchManagers: [
+        'dockerfile',
+      ],
+      excludePackagePatterns: ['alpine/git'],
+      enabled: false,
+    }
   ],
 }
