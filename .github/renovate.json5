@@ -35,13 +35,22 @@
   },
   customManagers: [
     {
-      "customType": "regex",
-      "fileMatch": ["^Earthfile$"],
-      "matchStrings": [
-	'#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)[\\s\\n]+(versioning=(?<versioning>.*?)\\s+)?ARG\\s+.*?(_VERSION|_VER)=(?<currentValue>.*)($|\\s\\n)',
+      customType: 'regex',
+      fileMatch: ['^Earthfile$'],
+      matchStrings: [
+	'\\s*#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)[\\s\\n]+(versioning=(?<versioning>.*?)\\s+)?ARG\\s+.*?(_VERSION|_VER)=(?<currentValue>.*)($|\\s|\\n)',
       ],
-      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     },
+    {
+	customType: 'regex',
+        fileMatch: ['^Earthfile$'],
+        matchStrings: ["# renovate: datasource=repology depName=alpine_(?<currentValue>\\d+_\\d+)"],
+            currentValueTemplate: "{{{ replace '_' '.' currentValue }}}",
+            datasourceTemplate: "docker",
+            depNameTemplate: "alpine",
+            versioningTemplate: "regex:^(?<major>\\d+)[._](?<minor>\\d+)$",
+            autoReplaceStringTemplate: "# renovate: datasource=repology depName=alpine_{{{newMajor}}}_{{{newMinor}}}"
+    }
     {
       customType: 'regex',
       fileMatch: [
@@ -107,7 +116,21 @@
       schedule: [
         'every month',
       ],
-	},
+    },
+    // group all alpine updates in the Earthfile
+    {
+      groupName: '{{{depName}}}-for-dind',
+      matchPackageNames: [
+        'alpine', 'docker'
+      ],
+      matchManagers: [
+        'regex',
+      ],
+      matchDatasources: [
+        'docker', 'repology'
+      ],
+      matchFileNames: ["^Earthfile$"],
+    },
     // disable any docker dependencies that are not alpine/git (temporary until we add other dependencies)
     {
       matchManagers: [
