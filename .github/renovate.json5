@@ -50,7 +50,7 @@
             depNameTemplate: "alpine",
             versioningTemplate: "regex:^(?<major>\\d+)[._](?<minor>\\d+)$",
             autoReplaceStringTemplate: "# renovate: datasource=repology depName=alpine_{{{newMajor}}}_{{{newMinor}}}"
-    }
+    },
     {
       customType: 'regex',
       fileMatch: [
