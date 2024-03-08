@@ -16,6 +16,8 @@
     'tests/**',
     'ast/tests/**',
     './**',
+    './*',
+    'Earthfile',
   ],
   ignorePaths: [
     "**/node_modules/**",
