@@ -15,8 +15,6 @@
     'buildcontext/**',
     'tests/**',
     'ast/tests/**',
-    './**',
-    './*',
     'Earthfile',
   ],
   ignorePaths: [
