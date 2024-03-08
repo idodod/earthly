@@ -38,8 +38,7 @@
       "customType": "regex",
       "fileMatch": ["^Earthfile$"],
       "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\sARG .*?_VERSION=\"(?<currentValue>.*)\"\\s",
-	'#\\s*datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?[\\s\\n]+ARG .*?(_VERSION|_VER)=(?<currentValue>.*)[\\n\\s]+',
+	'#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)[\\s\\n]+(versioning=(?<versioning>.*?)\\s+)?ARG\\s+.*?(_VERSION|_VER)=(?<currentValue>.*)($|\\s\\n)',
       ],
       "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     },
