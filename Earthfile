@@ -637,7 +637,7 @@ all-buildkitd:
         ./buildkitd+buildkitd --BUILDKIT_PROJECT="$BUILDKIT_PROJECT"
 
 dind-alpine:
-    # renovate: datasource=repology depName=alpine_3_18/docker versioning=loose
+    # renovate: datasource=repology depName=alpine_3_19/docker versioning=loose
     ARG DOCKER_VERSION=23.0.6-r5
     # renovate: datasource=docker depName=alpine versioning=semver
     ARG OS_VERSION=3.18
