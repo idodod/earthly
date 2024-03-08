@@ -32,6 +32,14 @@
   },
   customManagers: [
     {
+      "customType": "regex",
+      "fileMatch": ["^Earthfile$"],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\sARG .*?_VERSION=\"(?<currentValue>.*)\"\\s"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    },
+    {
       customType: 'regex',
       fileMatch: [
         '.+.md',
