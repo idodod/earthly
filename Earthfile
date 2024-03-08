@@ -639,7 +639,7 @@ all-buildkitd:
 dind-alpine:
     # renovate: datasource=repology depName=alpine_3_18/docker versioning=loose
     ARG DOCKER_VERSION=23.0.6-r5
-    # renovate: datasource=docker depName=alpine versioning=semver
+    # renovate: datasource=docker depName=alpine
     ARG OS_VERSION=3.18
     BUILD +dind --OS_IMAGE=alpine --OS_VERSION=$OS_VERSION --DOCKER_VERSION=$DOCKER_VERSION
 
