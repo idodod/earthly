@@ -15,6 +15,7 @@
     'buildcontext/**',
     'tests/**',
     'ast/tests/**',
+    '.',
   ],
   ignorePaths: [
     "**/node_modules/**",
