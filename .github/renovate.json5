@@ -117,11 +117,11 @@
         'every month',
       ],
     },
-    // group all alpine updates in the Earthfile
+    // set the group name for alpine dind dependencies in the root Earthfile
     {
-      groupName: '{{{depName}}}-for-dind',
-      matchPackageNames: [
-        'alpine', 'docker'
+      groupName: '{{{depName}}}-for-alpine-dind-image',
+      matchPackagePatterns: [
+        'alpine', 'alpine_.*?/docker'
       ],
       matchManagers: [
         'regex',
@@ -129,7 +129,7 @@
       matchDatasources: [
         'docker', 'repology'
       ],
-      matchFileNames: ["^Earthfile$"],
+      matchFileNames: ["Earthfile"],
     },
     // disable any docker dependencies that are not alpine/git (temporary until we add other dependencies)
     {
