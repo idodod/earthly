@@ -1,0 +1,23 @@
+name: release dind alpine
+
+on:
+  pull_request:
+    branches: [ "renovate/*-for-alpine-dind-image" ]
+
+jobs:
+  release:
+    runs-on: "ubuntu-latest"
+    env:
+      FORCE_COLOR: 1
+      EARTHLY_TOKEN: "${{ secrets.EARTHLY_TOKEN }}"
+      EARTHLY_INSTALL_ID: "earthly-githubactions"
+      # Used in our github action as the token - TODO: look to change it into an input
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.number }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: run earthly 
+        run: echo hello
+        
