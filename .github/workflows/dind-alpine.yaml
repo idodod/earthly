@@ -3,13 +3,10 @@ name: release dind alpine
 on:
   pull_request_target:
     types: [ closed ]
-    #branches: [ "renovate/**-for-alpine-dind-image" ]
-    branches:
-     - 'renovate/**-for-alpine-dind-image'
 
 jobs:
   release:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'renovate/') && endsWith(github.head_ref, '-for-alpine-dind-image')
     runs-on: "ubuntu-latest"
     env:
       FORCE_COLOR: 1
