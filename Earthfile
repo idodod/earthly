@@ -640,7 +640,7 @@ dind-alpine:
     # renovate: datasource=repology depName=alpine_3_18/docker versioning=loose
     ARG DOCKER_VERSION=25.0.3-r0
     # renovate: datasource=docker depName=alpine
-    ARG OS_VERSION=3.18
+    ARG OS_VERSION=3.19
     BUILD +dind --OS_IMAGE=alpine --OS_VERSION=$OS_VERSION --DOCKER_VERSION=$DOCKER_VERSION
 
 dind-ubuntu:
