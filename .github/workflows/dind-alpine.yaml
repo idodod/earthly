@@ -4,7 +4,8 @@ on:
   pull_request_target:
     types: [ closed ]
     #branches: [ "renovate/**-for-alpine-dind-image" ]
-    #branches: [ 'renovate/main-alpine-for-alpine-dind-image' ]
+    branches:
+     - 'renovate/**-for-alpine-dind-image'
 
 jobs:
   release:
