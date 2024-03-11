@@ -1,11 +1,13 @@
 name: release dind alpine
 
 on:
-  pull_request:
+  pull_request_target:
+    types: [ closed ]
     branches: [ "renovate/*-for-alpine-dind-image" ]
 
 jobs:
   release:
+    if: github.event.pull_request.merged == true
     runs-on: "ubuntu-latest"
     env:
       FORCE_COLOR: 1
