@@ -6,7 +6,7 @@ on:
 
 jobs:
   release:
-    if: github.event.pull_request.merged == true && startsWith(github.head_ref, 'renovate/') && endsWith(github.head_ref, '-for-alpine-dind-image')
+    if: github.event.pull_request.merged
     runs-on: "ubuntu-latest"
     env:
       FORCE_COLOR: 1
@@ -20,5 +20,5 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: run earthly 
-        run: echo hello
+        run: git rev-parse --short HEAD && git branch
         
