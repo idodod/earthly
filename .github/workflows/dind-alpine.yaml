@@ -1,18 +1,16 @@
-name: create pr for fork
+name: release dind alpine
 
 on:
   pull_request_target:
-    types: [ labeled ]
-    branches: [ "main" ]
+    types: [ closed ]
 
 jobs:
-  create-pr:
-    if: ${{ github.event.label.name == 'approved-for-tests' }}
+  release:
+    if: github.event.pull_request.merged
     runs-on: "ubuntu-latest"
     env:
       FORCE_COLOR: 1
       EARTHLY_TOKEN: "${{ secrets.EARTHLY_TOKEN }}"
-      EARTHLY_ORG: "ido+test"
       EARTHLY_INSTALL_ID: "earthly-githubactions"
       # Used in our github action as the token - TODO: look to change it into an input
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -21,9 +19,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: earthly/actions-setup@main
-      - name: list secrets
-        run: earthly secrets ls
       - name: run earthly 
-        run: earthly --ci +open-pr-for-fork --pr_number=${{ github.actor }}
+        run: git rev-parse --short HEAD && git branch
         

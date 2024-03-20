@@ -637,7 +637,11 @@ all-buildkitd:
         ./buildkitd+buildkitd --BUILDKIT_PROJECT="$BUILDKIT_PROJECT"
 
 dind-alpine:
-    BUILD +dind --OS_IMAGE=alpine --OS_VERSION=3.18 --DOCKER_VERSION=23.0.6-r5
+    # renovate: datasource=repology depName=alpine_3_19/docker versioning=loose
+    ARG DOCKER_VERSION=25.0.3-r1
+    # renovate: datasource=docker depName=alpine
+    ARG OS_VERSION=3.19
+    BUILD +dind --OS_IMAGE=alpine --OS_VERSION=$OS_VERSION --DOCKER_VERSION=$DOCKER_VERSION
 
 dind-ubuntu:
     BUILD +dind --OS_IMAGE=ubuntu --OS_VERSION=20.04 --DOCKER_VERSION=5:24.0.5-1~ubuntu.20.04~focal
@@ -823,23 +827,24 @@ npm-update-all:
 
 # open-pr-for-fork creates a new PR based on the given pr_number
 open-pr-for-fork:
-    ARG git_repo="idodod/earthly"
-    ARG git_url="git@github.com:$git_repo"
-    ARG earthly_lib_version=2.2.2
-    DO github.com/earthly/lib/ssh:$earthly_lib_version+ADD_KNOWN_HOSTS --target_file=~/.ssh/known_hosts
-    RUN git config --global user.name "littleredcorvette" && \
-        git config --global user.email "littleredcorvette@users.noreply.github.com"
-    GIT CLONE "$git_url" earthly
-    WORKDIR earthly
-    ARG git_hash=$(git rev-parse HEAD)
-    ARG TARGETARCH
-    # renovate: datasource=github-releases depName=cli/cli
-    ARG gh_version=v2.36.0
-    RUN curl -Lo ghlinux.tar.gz \
-      https://github.com/cli/cli/releases/download/$gh_version/gh_${gh_version#v}_linux_${TARGETARCH}.tar.gz \
-      && tar --strip-components=1 -xf ghlinux.tar.gz \
-      && rm ghlinux.tar.gz
+    #ARG git_repo="idodod/earthly"
+    #ARG git_url="git@github.com:$git_repo"
+    #ARG earthly_lib_version=2.2.2
+    #DO github.com/earthly/lib/ssh:$earthly_lib_version+ADD_KNOWN_HOSTS --target_file=~/.ssh/known_hosts
+    #RUN git config --global user.name "littleredcorvette" && \
+    #    git config --global user.email "littleredcorvette@users.noreply.github.com"
+    #GIT CLONE "$git_url" earthly
+    #WORKDIR earthly
+    #ARG git_hash=$(git rev-parse HEAD)
+    #ARG TARGETARCH
+    ## renovate: datasource=github-releases depName=cli/cli
+    #ARG gh_version=v2.36.0
+    #RUN curl -Lo ghlinux.tar.gz \
+    #  https://github.com/cli/cli/releases/download/$gh_version/gh_${gh_version#v}_linux_${TARGETARCH}.tar.gz \
+    #  && tar --strip-components=1 -xf ghlinux.tar.gz \
+    #  && rm ghlinux.tar.gz
     ARG --required pr_number
-    RUN --no-cache \
-        --secret GH_TOKEN=ido-github-token \
-        ./bin/gh pr list
+    RUN --no-cache echo hello from actor $pr_number
+    #RUN --no-cache \
+    #    --secret GH_TOKEN=ido-github-token \
+    #    ./bin/gh pr list
