@@ -223,6 +223,7 @@
       excludePackagePatterns: [
         'earthly/earthly',
       ],
+      separateMajorMinor: false,
       groupName: 'docs-dependencies',
     },
   ],
