@@ -80,7 +80,7 @@
     {
       customType: 'regex',
       fileMatch: [
-        'tests/with-docker-kind/Earthfile',
+        'Earthfile$',
       ],
       matchStrings: [
         'ARG DIND_IMAGE=earthly\\/dind:(?<currentValue>.*?)($|\\s|\\n)',
