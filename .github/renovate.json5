@@ -14,6 +14,7 @@
   includePaths: [
     'Earthfile',
     'docs/**',
+    'examples/**',
     '.github/**',
     'release/**',
     'buildcontext/**',
@@ -86,6 +87,7 @@
         'Earthfile$',
         'earthfile2llb/with_docker_run_base\\.go',
         'ast/tests/.*?\\.ast\\.json',
+        '.+.md',
       ],
       matchStrings: [
         'ARG(\\s+|\\s+.*?\\s+)DIND_IMAGE=earthly/dind:(?<currentValue>.*?)($|\\s|\\n)',
