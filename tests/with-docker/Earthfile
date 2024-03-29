@@ -162,7 +162,7 @@ if-after:
 
 cgroup-v2-test-all:
     BUILD +cgroup-v2-test \
-        --DIND_IMG=earthly/dind:alpine-3.19-docker-25.0.2-r0 \
+        --DIND_IMG=earthly/dind:alpine-3.18-docker-25.0.1-r0 \
         --DIND_IMG=earthly/dind:ubuntu-23.04-docker-24.0.5-1
 
 cgroup-v2-test:
