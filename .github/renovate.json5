@@ -123,7 +123,7 @@
       matchBaseBranches: [
         'docs-0.8',
       ],
-      excludePackagePatterns: [
+      excludePackageNames: [
         'earthly/earthly',
         'earthly/dind',
       ],
@@ -134,7 +134,7 @@
       matchBaseBranches: [
         'main',
       ],
-      matchPackagePatterns: [
+      matchPackageNames: [
         'earthly/earthly',
       ],
       enabled: false,
@@ -150,7 +150,7 @@
         'inputgraph/testdata/**',
         'ast/tests/**',
       ],
-      matchPackagePatterns: [
+      matchPackageNames: [
         'earthly/dind',
       ],
       enabled: false,
@@ -159,7 +159,7 @@
       matchBaseBranches: [
         'main',
       ],
-      matchPackagePatterns: [
+      matchPackageNames: [
         'earthly/dind',
       ],
       matchFileNames: [
@@ -183,7 +183,7 @@
       matchManagers: [
         'dockerfile',
       ],
-      excludePackagePatterns: [
+      excludePackageNames: [
         'alpine/git', 
         'earthly/dind',
       ],
@@ -219,7 +219,7 @@
         'examples/**',
         'docs/**',
       ],
-      excludePackagePatterns: [
+      excludePackageNames: [
         'earthly/earthly',
       ],
       separateMajorMinor: false,
