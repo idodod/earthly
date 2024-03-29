@@ -84,11 +84,12 @@
       customType: 'regex',
       fileMatch: [
         'Earthfile$',
-        'earthfile2llb/with_docker_run_base.go',
+        'earthfile2llb/with_docker_run_base\\.go',
+        'ast/tests/.*?\\.ast\\.json',
       ],
       matchStrings: [
-        'ARG(\\s+|\\s+.*?\\s+)DIND_IMAGE=earthly\\/dind:(?<currentValue>.*?)($|\\s|\\n)',
-        '--DIND_IMG=earthly\\/dind:(?<currentValue>.*?)($|\\s|\\n)',
+        'ARG(\\s+|\\s+.*?\\s+)DIND_IMAGE=earthly/dind:(?<currentValue>.*?)($|\\s|\\n)',
+        '--DIND_IMG=earthly/dind:(?<currentValue>.*?)($|\\s|\\n|")',
         '"earthly/dind:(?<currentValue>.+?)"',
       ],
       depNameTemplate: 'earthly/dind',
