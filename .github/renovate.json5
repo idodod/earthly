@@ -85,7 +85,7 @@
       matchStrings: [
         'ARG DIND_IMAGE=earthly\\/dind:(?<currentValue>.*?)($|\\s|\\n)',
       ],
-      depNameTemplate: 'alpine/dind',
+      depNameTemplate: 'earthly/dind',
       datasourceTemplate: 'docker',
     },
   ],
