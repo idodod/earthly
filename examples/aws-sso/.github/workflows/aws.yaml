@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: earthly/actions-setup@v1.0.5
+      - uses: earthly/actions-setup@v1.0.12
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Configure AWS credentials
