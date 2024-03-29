@@ -80,6 +80,7 @@
     {
       customType: 'regex',
       fileMatch: [
+        '**/Earthfile',
         'Earthfile',
       ],
       matchStrings: [
