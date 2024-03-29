@@ -148,16 +148,16 @@
       // rule to update earthly/dind:ubuntu:20.04-* images
       groupName: 'dind-images',
       matchPackageNames: ['earthly/dind'],
-      matchCurrentVersion: "/^ubuntu:20\\.04-.*/",
-      allowedVersions: "/^ubuntu:20\\.04-.*/",
+      matchCurrentVersion: "/^ubuntu-20\\.04-.*/",
+      allowedVersions: "/^ubuntu-20\\.04-.*/",
       versioning: "regex:^(?<compatibility>.*)-(?<major>\\d+\\.\\d+)-docker-(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)-(?<revision>\\d+)$",
     },
     {
       // rule to update earthly/dind:ubuntu:23.04-* images
       groupName: 'dind-images',
       matchPackageNames: ['earthly/dind'],
-      matchCurrentVersion: "/^ubuntu:23\\.04-.*/",
-      allowedVersions: "/^ubuntu:23\\.04-.*/",
+      matchCurrentVersion: "/^ubuntu-23\\.04-.*/",
+      allowedVersions: "/^ubuntu-23\\.04-.*/",
       versioning: "regex:^(?<compatibility>.*)-(?<major>\\d+\\.\\d+)-docker-(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)-(?<revision>\\d+)$",
     },
   ],
