@@ -214,6 +214,18 @@
       allowedVersions: "/^ubuntu-23\\.04-.*/",
       versioning: "regex:^(?<compatibility>.*)-(?<major>\\d+\\.\\d+)-docker-(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)-(?<revision>\\d+)$",
     },
+    // disable any dependencies in docs/ & examples/ except for earthly/earthly and earthly/dind (temporary until we add other dependencies)
+    {
+      matchFileNames: [
+        'examples/**',
+        'docs/**',
+      ],
+      excludePackageNames: [
+        'earthly/dind',
+        'earthly/earthly',
+      ],
+      enabled: false,
+    },
     {
       // group all examples and docs updates in one PR (except for earthly/earthly which is in a different PR)
       matchFileNames: [
