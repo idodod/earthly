@@ -80,7 +80,7 @@
     {
       customType: 'regex',
       fileMatch: [
-        '.*?Earthfile$',
+        'tests/with-docker-kind/Earthfile',
       ],
       matchStrings: [
         'ARG DIND_IMAGE=earthly\\/dind:(?<currentValue>.*?)($|\\s|\\n)',
@@ -136,7 +136,7 @@
         'every month',
       ],
     },
-    // disable any docker dependencies that are not alpine/git (temporary until we add other dependencies)
+    // disable any docker dependencies that are not alpine/git or earthly/dind (temporary until we add other dependencies)
     {
       matchManagers: [
         'dockerfile',
