@@ -144,7 +144,6 @@
         'docs-0.8',
       ],
       matchFileNames: [
-        '^Earthfile$',
         'earthfile2llb/**',
         'tests/**',
         'scripts/tests/interactive-debugger/**',
