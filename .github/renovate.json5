@@ -214,5 +214,16 @@
       allowedVersions: "/^ubuntu-23\\.04-.*/",
       versioning: "regex:^(?<compatibility>.*)-(?<major>\\d+\\.\\d+)-docker-(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)-(?<revision>\\d+)$",
     },
+    {
+      // group all examples and docs updates in one PR (except for earthly/earthly which is in a different PR)
+      matchFileNames: [
+        'examples/**',
+        'docs/**',
+      ],
+      excludePackagePatterns: [
+        'earthly/earthly',
+      ],
+      groupName: 'docs-dependencies',
+    },
   ],
 }
