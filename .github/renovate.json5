@@ -83,7 +83,7 @@
         'Earthfile',
       ],
       matchStrings: [
-        'ARG DIND_IMAGE=earthly/dind:(?<currentValue>.*?)($|\\s|\\n)',
+        'ARG DIND_IMAGE=earthly\\/dind:(?<currentValue>.*?)($|\\s|\\n)',
       ],
       depNameTemplate: 'alpine/dind',
       datasourceTemplate: 'docker',
