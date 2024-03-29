@@ -71,7 +71,7 @@
     {
       customType: 'regex',
       fileMatch: [
-        '^Earthfile$',
+        '.*?Earthfile$',
       ],
       matchStrings: [
         '\\s*#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)[\\s\\n]+(versioning=(?<versioning>.*?)\\s+)?ARG\\s+.*?(_VERSION|_VER|version)=(?<currentValue>.*?)($|\\s|\\n)',
@@ -80,8 +80,7 @@
     {
       customType: 'regex',
       fileMatch: [
-        '**/Earthfile',
-        'Earthfile',
+        '^Earthfile$',
       ],
       matchStrings: [
         'ARG DIND_IMAGE=earthly\\/dind:(?<currentValue>.*?)($|\\s|\\n)',
