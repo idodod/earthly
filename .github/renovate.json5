@@ -90,7 +90,10 @@
       matchStrings: [
         'ARG(\\s+|\\s+.*?\\s+)DIND_IMAGE=earthly/dind:(?<currentValue>.*?)($|\\s|\\n)',
         '--DIND_IMG=earthly/dind:(?<currentValue>.*?)($|\\s|\\n|")',
-        '"earthly/dind:(?<currentValue>.+?)"',
+        '("|\\`|\\s+)earthly/dind:(?<currentValue>.+?)("|\\`|\\s+\\|)',
+        'FROM(\\s+|\\s+.*?\\s+)earthly/dind:(?<currentValue>.*?)($|\\s|\\n|\\`)',
+        'docker.io/earthly/dind:(?<currentValue>.*?)@',
+
       ],
       depNameTemplate: 'earthly/dind',
       datasourceTemplate: 'docker',
@@ -130,6 +133,36 @@
       ],
       matchPackagePatterns: [
         'earthly/earthly',
+      ],
+      enabled: false,
+    },
+    {
+      matchBaseBranches: [
+        'docs-0.8',
+      ],
+      matchFileNames: [
+        'Earthfile',
+        'earthfile2llb/**',
+        'tests/**',
+        'scripts/tests/interactive-debugger/**',
+        'inputgraph/testdata/**',
+        'ast/tests/**',
+      ],
+      matchPackagePatterns: [
+        'earthly/dind',
+      ],
+      enabled: false,
+    },
+    {
+      matchBaseBranches: [
+        'main',
+      ],
+      matchPackagePatterns: [
+        'earthly/dind',
+      ],
+      matchFileNames: [
+        'examples/**',
+        'docs/**',
       ],
       enabled: false,
     },
