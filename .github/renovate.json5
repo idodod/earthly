@@ -123,6 +123,7 @@
       ],
       excludePackagePatterns: [
         'earthly/earthly',
+        'earthly/dind',
       ],
       enabled: false,
     },
