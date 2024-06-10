@@ -3,7 +3,7 @@
     {
       "command": {
         "args": [
-          "earthly/dind:alpine-3.19-docker-25.0.2-r0"
+          "earthly/dind:alpine-3.20-docker-26.1.3-r1"
         ],
         "name": "FROM"
       }
@@ -813,7 +813,7 @@
         {
           "command": {
             "args": [
-              "earthly/dind:alpine-3.19-docker-25.0.2-r0"
+              "earthly/dind:alpine-3.20-docker-26.1.3-r1"
             ],
             "name": "FROM"
           }
@@ -872,7 +872,7 @@
         {
           "command": {
             "args": [
-              "earthly/dind:alpine-3.19-docker-25.0.2-r0"
+              "earthly/dind:alpine-3.20-docker-26.1.3-r1"
             ],
             "name": "FROM"
           }
@@ -930,8 +930,8 @@
           "command": {
             "args": [
               "+cgroup-v2-test",
-              "--DIND_IMG=earthly/dind:alpine-3.19-docker-25.0.2-r0",
-              "--DIND_IMG=earthly/dind:ubuntu-23.04-docker-24.0.5-1"
+              "--DIND_IMG=earthly/dind:alpine-3.20-docker-26.1.3-r1",
+              "--DIND_IMG=earthly/dind:ubuntu-23.04-docker-25.0.2-1"
             ],
             "name": "BUILD"
           }
