@@ -1,5 +1,5 @@
 VERSION 0.8
-FROM earthly/dind:alpine-3.19-docker-25.0.2-r0
+FROM earthly/dind:alpine-3.20-docker-26.1.3-r1
 
 ARG --global KIND_VERSION=0.20.0
 
@@ -8,7 +8,7 @@ all:
     BUILD +ubuntu-kind
 
 alpine-kind:
-    ARG DIND_IMAGE=earthly/dind:alpine-3.18-docker-25.0.1-r0
+    ARG DIND_IMAGE=earthly/dind:alpine-3.20-docker-26.1.3-r1
     FROM $DIND_IMAGE
     RUN apk add curl
     RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v$KIND_VERSION/kind-linux-amd64 && chmod +x kind
@@ -17,7 +17,7 @@ alpine-kind:
     END
 
 ubuntu-kind:
-    ARG DIND_IMAGE=earthly/dind:ubuntu-23.04-docker-24.0.5-1
+    ARG DIND_IMAGE=earthly/dind:ubuntu-23.04-docker-25.0.2-1
     FROM $DIND_IMAGE
     RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v$KIND_VERSION/kind-linux-amd64 && chmod +x kind
     WITH DOCKER
