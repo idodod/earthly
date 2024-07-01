@@ -10,9 +10,9 @@ This image supports 3 linux distributions:
 * ubuntu:23.04
 
 For which the current latest tags (respectively) are:
-* `alpine-3.19-docker-25.0.2-r0`
-* `ubuntu-20.04-docker-24.0.5-1`
-* `ubuntu-23.04-docker-24.0.5-1`
+* `alpine-3.20-docker-26.1.3-r1`
+* `ubuntu-20.04-docker-27.0.3-1`
+* `ubuntu-23.04-docker-25.0.2-1`
 
 For other available tags, please check out https://hub.docker.com/r/earthly/dind/tags
 
@@ -41,7 +41,7 @@ dind:
   ARG SMALLEST_VERSION="$(echo -e "$EARTHLY_VERSION\nv0.7.14" | sort -V | head -n 1)"
   IF [ "$SMALLEST_VERSION" = "v0.7.14" ]
     # earthly is at v0.7.14 or newer, and must use the more recent dind:alpine-3.19-docker-25.0.2-r0 image
-    FROM earthly/dind:alpine-3.19-docker-25.0.2-r0
+    FROM earthly/dind:alpine-3.20-docker-26.1.3-r1
   END
 
 test:
